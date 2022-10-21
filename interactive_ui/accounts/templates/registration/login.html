@@ -1,0 +1,73 @@
+{% extends "registration/auth_base.html" %}
+
+{% block content %}
+
+{% if form.errors %}
+<p>Your username and password didn't match. Please try again.</p>
+{% endif %}
+
+{% if next %}
+    {% if user.is_authenticated %}
+    <p>Your account doesn't have access to this page. To proceed,
+    please login with an account that has access.</p>
+    {% else %}
+    <p>Please login to see this page.</p>
+    {% endif %}
+{% endif %}
+
+
+{# Assumes you set up the password_reset view in your URLconf #}
+
+<div class="wrapper-page animated fadeInDown">
+    <div class="panel panel-color panel-primary">
+        <div class="panel-heading"> 
+           <h3 class="text-center m-t-10"> Sign In to <br><span><strong>Livepeer Interactive Player</strong></span> </h3>
+        </div> 
+
+        <form class="form-horizontal m-t-40" method="post" action="{% url 'accounts:login' %}">
+            {% csrf_token %}                        
+            <div class="form-group ">
+                <div class="col-xs-12">
+                    <!-- <input class="form-control" type="text" placeholder="Username"> -->
+                    {{form.username}}
+                </div>
+            </div>
+            <div class="form-group ">
+                
+                <div class="col-xs-12">
+                    <!-- <input class="form-control" type="password" placeholder="Password"> -->
+                    {{form.password}}
+                </div>
+            </div>
+
+            <div class="form-group ">
+                <div class="col-xs-12">
+                    <label class="cr-styled">
+                        <input type="checkbox" checked>
+                        <i class="fa"></i> 
+                        Remember me
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-group text-right">
+                <div class="col-xs-12">
+                    <button class="btn btn-purple w-md" type="submit">Log In</button>
+                    <input type="hidden" name="next" value="{{ next }}">
+                </div>
+            </div>
+            <div class="form-group m-t-30">
+                <div class="col-sm-7">
+                    <a href="recoverpw.html"><i class="fa fa-lock m-r-5"></i> Forgot your password?</a>
+                </div>
+                <div class="col-sm-5 text-right">
+                    <a href="register.html">Create an account</a>
+                </div>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+
+{% endblock %}

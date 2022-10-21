@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang=en>
+  <head>
+    <title>MistServer Meta-player</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=400">
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    
+    <link rel="shortcut icon" href="../imgs/play.svg">
+    <script>
+      var maskmetadata = [];
+    </script>
+    <script src=../util.js></script>
+    <script src=../skins.js></script>
+    <script src=../controls.js></script>
+    <script src=../player.js></script>
+    
+    <script src=../wrappers/html5.js></script>
+    <!-- <script src=../wrappers/hlsjs.js></script> -->
+    <script src=../wrappers/videojs.js></script>
+    <script src=../wrappers/dashjs.js></script>
+    <script src=../wrappers/webrtc.js></script>
+    <script src=../wrappers/flash_strobe.js></script>
+    <script src=../wrappers/mews.js></script>
+    <script src=../wrappers/flv.js></script>
+    
+    <script>
+      try {
+        //add these to point to the unminified and unconcatenated versions of the css files
+        MistSkins.default.css.general = "../skins/general.css";
+        MistSkins.dev.css.default = "../skins/default.css";
+        
+        //MistSkins.default.css.skin = "http://cattop:8080/skins/default.css";
+        //MistSkins.dev.css.skin = "http://cattop:8080/skins/dev.css";
+        
+        //use local player scripts
+        mistplayers.dashjs.scriptsrc = function(){ return "../players/dash.all.min.js"; };
+        //mistplayers.videojs.scriptsrc = function(){ return "../players/video.min.js"; };
+        mistplayers.videojs.scriptsrc = function(){ return "../players/video.js"; };
+        mistplayers.flv.scriptsrc = function(){ return "../players/flv.min.js"; };
+        mistplayers.hlsjs.scriptsrc = function(){ return "../players/hls.js"; };
+      }
+      catch(e){}
+    </script>
+    
+    <style>
+      .mistvideo-progress .bar { background-color: transparent !important; } 
+      body {
+        padding: 0;
+        margin: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: #0f0f0f;
+        color: #aaa;
+        overflow: hidden;
+        display: flex;
+        flex-flow: column nowrap;
+        align-items: center;
+      }
+      
+      .videocontainer {
+        flex-grow: 1;
+        flex-shrink: 1;
+        margin: 1em 0;
+        display: flex;
+        align-items: center;
+        max-width: 100%;
+        min-height: 4em;
+      }
+      
+      .videocontainer * {
+        /*outline: 1px solid red;*/
+      }
+      
+      .streamopts {
+        display: flex;
+        flex-flow: row nowrap;
+        z-index: 1;
+        top: 0;
+        flex-shrink: 0;
+        width: 400px;
+        flex-shrink: 0;
+        min-height: 2em;
+      }
+      .streamopts > * {
+        display: flex;
+        flex-flow: column nowrap;
+        width: 50%;
+      }
+      
+      .controlcont {
+        display: flex;
+        flex-flow: row nowrap;
+        align-items: baseline;
+      }
+      .controlcont > *:not(:first-child) {
+        margin-left: 0.5em;
+      }
+      
+      .streamOptions {
+        flex-shrink: 1;
+        width: 30em;
+        min-height: 2em;
+      }
+      .streamOptions:focus {
+        z-index: 99;
+      }
+      
+      a {
+        color: cyan;
+      }
+      
+      
+      h2 {
+        margin: 0;
+      }
+      
+      textarea {
+        font-size: 0.8em;
+        max-height: 20em;
+        overflow-y: auto;
+      }
+      
+    </style>
+    
+    <script>     
+      var video;
+      var MistVideoObject = {};
+      var cont;
+      var opts = {
+        stream: 'test',
+        opts: {
+          host: location.protocol+"//"+location.hostname+":8080",
+          //poster: 'poster.svg',
+          skin: "dev",
+          loop: true,
+          forcePriority: {
+            source: [["type",["webrtc"]]]
+          }
+        }
+      };
+      
+      //try loading player options from localStorage, otherwise, fallback to these
+      var stored = {
+        opts: {}
+      };
+      try {
+        stored = JSON.parse(localStorage['embedtest']) || {};
+        for (var i in stored.opts) {
+          opts.opts[i] = stored.opts[i];
+        }
+        if ("stream" in stored) {
+          opts.stream = stored.stream;
+        }
+      }
+      catch (e) {}
+      function store() {
+        //save stuff to localStorage
+        try {
+          localStorage['embedtest'] = JSON.stringify(stored);
+        }
+        catch (e) {}
+      }
+      
+      
+      //some stream presets for the datalist
+      var streams = [''];
+      //some host presets for the datalist
+      var hosts = ['http://localhost:8080'];
+      try {
+        var saved = JSON.parse(localStorage["embedtest_prev"]);
+        if (saved.streams) { streams = saved.streams; }
+        if (saved.hosts) { hosts = saved.hosts; }
+      }
+      catch (e) {}
+
+      
+      //init function that is called when the body is loaded
+      function mistinit(forceStream) {
+        console.warn("Testing page is initing a new player");
+        if (MistVideoObject.reference) { MistVideoObject.reference.unload("Testing page is reloading player"); }
+        if (forceStream) {
+          opts.stream = forceStream;
+          opts.opts.host = "http://localhost:8080";
+        }
+        
+        document.body.innerHTML = ''; //reset the page
+        document.body.appendChild(cont);
+        
+        
+        //create a bar containing options for the meta-player
+        var streamopts = document.createElement('div');
+        streamopts.className = 'streamopts';
+        document.body.appendChild(streamopts);
+        var cell = document.createElement('div');
+        streamopts.appendChild(cell);
+        var t = document.createElement('span');
+        t.innerHTML = 'your MistServer host:';
+        cell.appendChild(t);
+        var hostfield = document.createElement('input');
+        hostfield.value = opts.opts.host;
+        hostfield.setAttribute('list','hosts');
+        hostfield.setAttribute("autocapitalize","none");
+        cell.appendChild(hostfield);
+        var cell = document.createElement('div');
+        streamopts.appendChild(cell);
+        var t = document.createElement('span');
+        t.innerHTML = 'streamname:';
+        cell.appendChild(t);
+        var hostslist = document.createElement('datalist');
+        hostslist.id = 'hosts';
+        document.body.appendChild(hostslist);
+        for (var i in hosts) {
+          var o = document.createElement('option');
+          o.value = hosts[i];
+          hostslist.appendChild(o);
+        }
+        hostfield.onchange = function(){
+          try {
+            if (hosts.indexOf(this.value) < 0) { hosts.push(this.value); }
+            var saved = {
+              hosts: hosts,
+              streams: streams
+            };
+            localStorage["embedtest_prev"] = JSON.stringify(saved);
+            
+          }
+          catch (e) {}
+          
+          opts.opts.host = this.value;
+          stored.opts.host = this.value;
+          store();
+          mistinit();
+        };
+        var streamfield = document.createElement('input');
+        streamfield.value = opts.stream;
+        streamfield.setAttribute('list','streams');
+        streamfield.setAttribute("autocapitalize","none");
+        cell.appendChild(streamfield);
+        var streamlist = document.createElement('datalist');
+        streamlist.id = 'streams';
+        document.body.appendChild(streamlist);
+        for (var i in streams) {
+          var o = document.createElement('option');
+          o.value = streams[i];
+          streamlist.appendChild(o);
+        }
+        streamfield.onchange = function(){
+          try {
+            if (streams.indexOf(this.value) < 0) { streams.push(this.value); }
+            var saved = {
+              hosts: hosts,
+              streams: streams
+            };
+            localStorage["embedtest_prev"] = JSON.stringify(saved);
+            
+          }
+          catch (e) {}
+          
+          opts.stream = this.value;
+          stored.stream = this.value;
+          store();
+          mistinit();
+        };
+        
+        //and one for the actual stream
+        var videocont = document.createElement('div');
+        videocont.className = "videocontainer";
+        document.body.appendChild(videocont);
+        
+
+        //do this after the player is built
+        opts.opts.callback = function (p) {
+          video = p;
+          
+          var o = MistUtil.object.extend({},video.options);
+          delete o.callback;
+          delete o.target;
+          delete o.MistVideoObject;
+          streamoptions.innerHTML = "";
+          var json = JSON.stringify(o,null,2);
+          streamoptions.appendChild(document.createTextNode(json));
+          streamoptions.rows = json.split("\n").length;
+          
+          
+        }
+        
+        opts.opts.target = videocont;
+        opts.opts.MistVideoObject = MistVideoObject;
+        
+        var streamoptions = document.createElement("textarea");
+        streamoptions.className = "streamOptions";
+        document.body.appendChild(streamoptions);
+        streamoptions.onchange = function(e){
+          opts.opts = JSON.parse(this.value);
+          stored.opts = opts.opts;
+          store();
+          mistinit();
+        };
+        streamoptions.onkeypress = function(e){
+          if (e.which == 13) { //enter key
+            this.blur();
+            e.preventDefault();
+          }
+        }
+        var o = MistUtil.object.extend({},opts.opts);
+        delete o.MistVideoObject;
+        streamoptions.innerHTML = JSON.stringify(o,null,2);
+        
+        video = mistPlay(opts.stream,opts.opts);
+        
+        /*
+        var derp = {};
+        MistUtil.object.extend(derp,opts.opts);
+        derp.target = document.createElement("div");
+        document.body.appendChild(derp.target);
+        mistPlay(opts.stream,derp);
+        */
+      }
+            
+      
+      const classes = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+                'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
+                'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
+                'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
+                'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+                'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
+                'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+                'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+                'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+                'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+                'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop',
+                'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
+                'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
+                'scissors', 'teddy bear', 'hair drier', 'toothbrush'];
+
+      const distinctcolors = [
+        "#000000", "#FFFF00", "#1CE6FF", "#FF34FF", "#FF4A46", "#008941", "#006FA6", "#A30059",
+        "#FFDBE5", "#7A4900", "#0000A6", "#63FFAC", "#B79762", "#004D43", "#8FB0FF", "#997D87",
+        "#5A0007", "#809693", "#FEFFE6", "#1B4400", "#4FC601", "#3B5DFF", "#4A3B53", "#FF2F80",
+        "#61615A", "#BA0900", "#6B7900", "#00C2A0", "#FFAA92", "#FF90C9", "#B903AA", "#D16100",
+        "#DDEFFF", "#000035", "#7B4F4B", "#A1C299", "#300018", "#0AA6D8", "#013349", "#00846F",
+        "#372101", "#FFB500", "#C2FFED", "#A079BF", "#CC0744", "#C0B9B2", "#C2FF99", "#001E09",
+        "#00489C", "#6F0062", "#0CBD66", "#EEC3FF", "#456D75", "#B77B68", "#7A87A1", "#788D66",
+        "#885578", "#FAD09F", "#FF8A9A", "#D157A0", "#BEC459", "#456648", "#0086ED", "#886F4C",
+
+        "#34362D", "#B4A8BD", "#00A6AA", "#452C2C", "#636375", "#A3C8C9", "#FF913F", "#938A81",
+        "#575329", "#00FECF", "#B05B6F", "#8CD0FF", "#3B9700", "#04F757", "#C8A1A1", "#1E6E00",
+        "#7900D7", "#A77500", "#6367A9", "#A05837", "#6B002C", "#772600", "#D790FF", "#9B9700",
+        "#549E79", "#FFF69F", "#201625", "#72418F", "#BC23FF", "#99ADC0", "#3A2465", "#922329",
+        "#5B4534", "#FDE8DC", "#404E55", "#0089A3", "#CB7E98", "#A4E804", "#324E72", "#6A3A4C",
+        "#83AB58", "#001C1E", "#D1F7CE", "#004B28", "#C8D0F6", "#A3A489", "#806C66", "#222800",
+        "#BF5650", "#E83000", "#66796D", "#DA007C", "#FF1A59", "#8ADBB4", "#1E0200", "#5B4E51",
+        "#C895C5", "#320033", "#FF6832", "#66E1D3", "#CFCDAC", "#D0AC94", "#7ED379", "#012C58"];
+      
+      function closestIndex(num, arr) {
+        var curr = arr[0],
+            diff = Math.abs(num - curr),
+            index = 0;
+
+        for (var val = 0; val < arr.length; val++) {
+            let newdiff = Math.abs(num - arr[val]);
+            
+            // break if timediff is less than 100ms
+            if (newdiff < 100) {
+              index = val;
+              break;  
+            }
+            if (newdiff < diff) {
+                diff = newdiff;
+                curr = arr[val];
+                index = val;
+            }
+        }
+        return index;
+      }
+
+      setInterval(drawmetaimage, 50);
+
+      var metapanelInit = 0;
+      let image = null;
+      var ctx = null;
+      var layer1 = null;
+      function drawmetaimage() {
+        videlement = document.getElementsByTagName("video");
+
+        if(typeof(videlement[0]) !== 'undefined') {
+          if (!metapanelInit) {
+
+          }
+          
+          videlement[0].onplay = function() {
+            maskmetadata = [];
+            //nick added
+            if(document.getElementById('layer1') == null) {
+                layer1 = document.createElement('canvas');
+                layer1.id = "layer1";
+                layer1.width = videlement[0].getBoundingClientRect().width;
+                layer1.height = videlement[0].getBoundingClientRect().height;
+                // layer1canvas.style.width = videlement[0].getBoundingClientRect().width + "px";
+                // layer1canvas.style.height = videlement[0].getBoundingClientRect().height + "px";
+                layer1.style.position = "absolute";
+                layer1.style.top = "0px";
+                layer1.style.left = "0px";
+                layer1.style.zIndex = 2;
+                layer1.style.opacity = "0.5";
+
+                videlement[0].parentNode.appendChild(layer1);
+                if (ctx == null)
+                    ctx = layer1.getContext('2d');
+            }
+            // metapanelInit++;
+          };
+
+          if (maskmetadata.length > 0) {
+
+            ctx.clearRect(0, 0, layer1.width, layer1.height);
+            maskdata = maskmetadata[closestIndex(videlement[0].currentTime * 1000, maskmetadata)];
+            if (Math.abs(videlement[0].currentTime * 1000 - maskdata.timestamp) > 1000) {
+              console.warn("out of sync, ignoring meta");
+            //   ctx.clearRect(0, 0, layer1.width, layer1.height);
+            
+              if (ctx != null)
+                ctx.clearRect(0, 0, layer1.width, layer1.height);
+              return;
+            }
+            // console.log("currenttime:", videlement[0].currentTime * 1000, "maskdata:", maskdata);
+            // return;
+            objects = JSON.parse(maskdata.mask);
+            
+            let widthscale = layer1.width / 400.0;
+            let heightscale = layer1.height / 300.0;
+
+            drawbboxes(objects, ctx);
+            function fillPoly(points, color, context) {
+                if (points.length > 0) {
+                    context.fillStyle = color;
+                    context.beginPath();
+                    context.moveTo(points[0]*widthscale, points[1]*heightscale);   // point 1
+
+                    for (var i = 2; i < points.length; i += 2) {
+                        // point = points[i];
+
+                        context.lineTo(points[i]*widthscale, points[i+1]*heightscale);
+                    }
+
+                    context.closePath();      // go back to point 1
+                    context.fill();
+                }
+            }
+
+            function drawbboxes(dobjects, ctx) {
+                ctx.clearRect(0, 0, layer1.width, layer1.height);
+                ctx.lineWidth = "6";
+                ctx.strokeStyle = "red";
+
+                for (let i= 0; i < dobjects.length; i++) {
+                    ctx.beginPath();
+                    ctx.font = "30px Arial";
+                    ctx.fillStyle = "red";
+                    ctx.fillText(classes[(dobjects[i].class)] + dobjects[i].tracking_id, widthscale * dobjects[i].bbox.x, heightscale * dobjects[i].bbox.y);
+                    ctx.rect(widthscale * dobjects[i].bbox.x, heightscale * dobjects[i].bbox.y, widthscale * dobjects[i].bbox.w, heightscale * dobjects[i].bbox.h);
+                    ctx.stroke();
+                    // console.log(dobjects[i].polygons[0]);
+                    if (typeof(dobjects[i].polygons[0]) == 'undefined') {
+                      console.log(dobjects[i]);
+                      continue;
+                    } 
+                    fillPoly(dobjects[i].polygons[0], distinctcolors[parseInt(dobjects[i].tracking_id) % 128], ctx);
+                }
+                // console.log("# of objects", dobjects.length);
+                // setTimeout(clear, 100, ctx);
+            }
+
+
+          }
+        }
+      }
+
+      function go() {
+      
+        cont = document.createElement("div");
+      
+        if (location.hash == "#random") {
+          getStreams("http://localhost:4242/api",function(streams){
+            mistinit(streams[Math.floor(Math.random() * streams.length)]);
+          });
+          function getStreams(host,callback) {
+            var data = {
+              active_streams: true,
+              browse: "/home/darkhorse/vids"
+            };
+            MistUtil.http.post(host,{command:JSON.stringify(data)},function(d){
+              d = JSON.parse(d);
+              var streams = [];
+              for (var i in d.streams) {
+                if (d.streams[i].online == 2) {
+                  streams.push(i);
+                }
+              }
+              if (d.active_streams) { streams = streams.concat(d.active_streams); }
+              if (d.browse) {
+                for (var i in d.browse.files) {
+                  if (d.browse.files[i].indexOf(".dtsh") < 0) {
+                    streams.push("vids+"+d.browse.files[i]);
+                  }
+                }
+              }
+              callback(streams);
+            });
+          }
+        }
+        else {
+          mistinit();
+        }
+      }
+      
+    </script>
+    
+  </head>
+  <body onload=go()>
+  </body>
+</html>

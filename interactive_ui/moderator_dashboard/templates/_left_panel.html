@@ -1,0 +1,26 @@
+{% load static %}
+<aside class="left-panel">
+    <!-- brand -->
+    <div class="logo">
+        <a href="" class="logo-expanded">
+            <img src="{% static "imgs/logo.svg" %}"  style="height:30px" alt="logo">
+            <span class="nav-label"></span>
+        </a>
+    </div>
+    <!-- / brand -->
+            <!-- Navbar Start -->
+    <nav class="navigation">
+        <ul class="list-unstyled">
+            <li class="has-submenu"><a href="#"><i class="ion-home"></i> <span class="nav-label">Dashboard</span></a>
+                <ul class="list-unstyled">
+                    <li><a href="">Overview</a></li>
+                </ul>
+            </li>
+            <li class="has-submenu"><a href="#"><i class="fa fa-money"></i> <span class="nav-label">Analytics</span></a>
+                <ul class="list-unstyled">
+                    <li><a href="">Analytics</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+</aside>

@@ -1,0 +1,543 @@
+{% load static %}
+<html>
+    <head>
+        <title>MistServer Meta-player</title>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+        <meta name="viewport" content="width=400">
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        
+        <link rel="shortcut icon" href={% static "imgs/play.svg" %}>
+        <script>
+          var facemetadata = [];
+          var segmentationmetadata = [];
+        </script>
+
+        <!-- Bootstrap core CSS -->
+        <link href={% static "css/bootstrap.min.css" %} rel="stylesheet">
+        <link href={% static "css/bootstrap-reset.css" %} rel="stylesheet">
+
+        
+        <!-- Plugins css-->
+        <link href={% static "assets/tagsinput/jquery.tagsinput.css" %} rel="stylesheet" />
+
+        <!-- Custom styles for this template -->
+        <link href={% static "css/style.css" %} rel="stylesheet">
+        <link href={% static "css/helper.css" %} rel="stylesheet">
+        <link href={% static "css/style-responsive.css" %} rel="stylesheet" />
+
+        <script src={% static "util.js" %}></script>
+        <script src={% static "skins.js" %}></script>
+        <script src={% static "controls.js" %}></script>
+        <script src={% static "player.js" %}></script>
+
+        <script src={% static "wrappers/html5.js" %}></script>
+        <script src={% static "wrappers/videojs.js" %}></script>
+        <script src={% static "wrappers/dashjs.js" %}></script>
+        <script src={% static "wrappers/webrtc.js" %}></script>
+        <script src={% static "wrappers/flash_strobe.js" %}></script>
+        <script src={% static "wrappers/mews.js" %}></script>
+        <script src={% static "wrappers/flv.js" %}></script>
+
+        <script>
+            try {
+              //add these to point to the unminified and unconcatenated versions of the css files
+              MistSkins.default.css.general = '{% static "skins/general.css" %}';
+              MistSkins.dev.css.default = '{% static "skins/default.css" %}';
+              
+             
+              //use local player scripts
+              mistplayers.dashjs.scriptsrc = function(){ return '{% static "players/dash.all.min.js" %}'; };
+              mistplayers.videojs.scriptsrc = function(){ return '{% static "players/video.js" %}'; };
+              mistplayers.flv.scriptsrc = function(){ return '{% static "players/flv.min.js" %}'; };
+              mistplayers.hlsjs.scriptsrc = function(){ return '{% static "players/hls.js" %}'; };
+            }
+            catch(e){}
+        </script>
+        <style>
+            .mistvideo-progress .bar { background-color: transparent !important; } 
+            body {
+            padding: 0;
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #0f0f0f;
+            color: #aaa;
+            overflow: hidden;
+            display: flex;
+            flex-flow: column nowrap;
+            align-items: center;
+            }
+            
+            .videocontainer {
+            flex-grow: 1;
+            flex-shrink: 1;
+            margin: 1em 0;
+            display: flex;
+            align-items: center;
+            max-width: 100%;
+            min-height: 4em;
+            }
+            
+            .videocontainer * {
+            /*outline: 1px solid red;*/
+            }
+            
+            .streamopts {
+            display: flex;
+            flex-flow: row nowrap;
+            z-index: 1;
+            top: 0;
+            flex-shrink: 0;
+            width: 400px;
+            flex-shrink: 0;
+            min-height: 2em;
+            }
+            .streamopts > * {
+            display: flex;
+            flex-flow: column nowrap;
+            width: 50%;
+            }
+            
+            .controlcont {
+            display: flex;
+            flex-flow: row nowrap;
+            align-items: baseline;
+            }
+            .controlcont > *:not(:first-child) {
+            margin-left: 0.5em;
+            }
+            
+            .streamOptions {
+            flex-shrink: 1;
+            width: 30em;
+            min-height: 2em;
+            }
+            .streamOptions:focus {
+            z-index: 99;
+            }
+            
+            a {
+            color: cyan;
+            }
+            
+            
+            h2 {
+            margin: 0;
+            }
+            
+            .box {
+                    border: 3px solid #FF0000;
+                    width: 0px;
+                    height: 0px;
+                    position: absolute;
+                    opacity: 0.5;
+                    cursor: move;
+                }
+    
+
+            @media (min-width: 768px) {
+                .min-vh-md-80 {
+                    min-height: 75% !important;   
+                }
+
+                .min-vh-md-20 {
+                    min-height: 25% !important;   
+                }
+            }
+
+
+            .tooltip {
+                transform: translate(-50%, -200%);
+                display: none;
+                position: absolute;
+                color: #F0B015;
+                background-color: #000;
+                border: none;
+                border-radius: 4px;
+                padding: 15px 10px;
+                z-index: 10;
+                display: block;
+                width: 100%;
+                max-width: 200px;
+                top: 0;
+                left: 50%;
+                text-align: center;
+            }
+
+            .tooltip:after {
+                content: "";
+                display: block;
+                position: absolute;
+                border-color: rgba(0, 0, 0, 1) rgba(0, 0, 0, 0);
+                border-style: solid;
+                border-width: 15px 15px 0;
+                bottom: -13px;
+                left: 50%;
+                transform: translate(-50%, 0);
+                width: 0;
+            }
+        </style>
+      
+        <script>     
+            var video;
+            var vidcont;
+            var MistVideoObject = {};
+            var textpanel;
+            var opts = {
+                stream: 'test',
+                opts: {
+                    host: location.protocol+"//"+location.hostname+":8080",
+                    skin: "dev",
+                    loop: true,
+                    forcePlayer:"mews",
+                }
+            };
+                        
+            
+            //some stream presets for the datalist
+            var streams = [''];
+            //some host presets for the datalist
+            var hosts = ['http://localhost:8080'];  
+            
+            //init function that is called when the body is loaded
+            function mistinit() {
+                console.warn("Testing page is initing a new player");
+                if (MistVideoObject.reference) { MistVideoObject.reference.unload("Testing page is reloading player"); }
+                 
+                let videocont = document.getElementById('videocontainer');
+                
+                opts.opts.target = videocont;
+                opts.opts.MistVideoObject = MistVideoObject;
+            
+                video = mistPlay(opts.stream,opts.opts);
+            }
+                      
+            function go() {
+                mistinit();
+                //let vidcont = document.getElementsByClassName("mistvideo-video");
+                //console.log(vidcont.length);
+            }
+            
+        </script>
+    </head>
+
+    <body onload=go()>
+        
+        <section class="container" style="width: 100%; height:100%">
+            <div class="row min-vh-md-80">
+                <div class="col-md-10">
+                    <div class="videocontainer" id="videocontainer">
+                    </div>
+                </div>
+                <div class="container col-md-2">
+                    <div class="panel panel-default min-vh-md-80">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">Chat Window</h3>
+                        </div>
+                        <div class="panel-body">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row min-vh-md-20">
+                <div class="panel panel-default col-md-5 min-vh-md-20">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Actions</h3>
+                    </div>
+                    <div class="panel-body">
+                        <button type="button" class="btn btn-default btn-rounded m-b-5" onclick="click_action('open');">Open</button>
+                        <button type="button" class="btn btn-primary btn-rounded m-b-5" onclick="click_action('close');">Close</button>
+                        <button type="button" class="btn btn-success btn-rounded m-b-5" onclick="click_action('talk');">Talk</button>
+                        <button type="button" class="btn btn-info btn-rounded m-b-5" onclick="click_action('give');">Give</button>
+                        <button type="button" class="btn btn-warning btn-rounded m-b-5" onclick="click_action('buy');">Buy</button>
+                        <button type="button" class="btn btn-danger btn-rounded m-b-5" onclick="click_action('sell');">Sell</button>
+                        <button type="button" class="btn btn-info btn-rounded m-b-5" onclick="click_action('fight');">Fight</button>
+                        <button type="button" class="btn btn-warning btn-rounded m-b-5" onclick="click_action('run');">Run</button>
+                        <button type="button" class="btn btn-danger btn-rounded m-b-5" onclick="click_action('escape');">Escape</button>
+                    </div>
+                </div>
+
+                <div class="panel panel-default col-md-5 min-vh-md-20">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Metadata</h3>
+                    </div>
+                    <div class="panel-body" id="metadata_panel">
+                    </div>
+                </div>
+
+                <div class="panel panel-default col-md-2 min-vh-md-20">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">User Script</h3>
+                    </div>
+                    <div class="panel-body">
+                        <form class="form-horizontal" role="form">
+                            <div class="form-group">
+                                <div class="col-sm-12">
+                                    <input name="tags" id="tags" class="form-control" value="" />
+                                </div>
+                            </div><!-- form-group -->
+                        </form>
+                        <div class="row">
+                            <span>next vote starts in <label id="downcounter"></label> seconds</span>
+                            <button type="button" class="btn btn-success btn-rounded m-b-5" style="float: right;" onclick="on_click_send();">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- js placed at the end of the document so the pages load faster -->
+        <script src={% static "js/jquery.js" %}></script>
+        <script src={% static "js/bootstrap.min.js" %}></script>
+        <script src={% static "js/modernizr.min.js" %}></script>
+        <script src={% static "js/pace.min.js" %}></script>
+        <script src={% static "js/wow.min.js" %}></script>
+        <script src={% static "js/jquery.scrollTo.min.js" %}></script>
+        <script src={% static "js/jquery.nicescroll.js" %} type="text/javascript"></script>
+
+        <script src={% static "assets/chat/moment-2.2.1.js" %}></script>
+        <script src={% static "assets/tagsinput/jquery.tagsinput.min.js" %}></script>
+
+        <script>
+            let remaining_time = 30;
+            let manual_sent = false;
+            let window_id;
+            let meta_objects = [];
+            let detected_instances = [];
+            let click_handler_added = false;
+            let layer1 = null;
+            let segmentation_canvas = null;
+            var image = new Image();
+            let coco_classes = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+                'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
+                'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
+                'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
+                'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+                'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
+                'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+                'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+                'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+                'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+                'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop',
+                'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven',
+                'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
+                'scissors', 'teddy bear', 'hair drier', 'toothbrush'];
+
+            jQuery(document).ready(function() {                   
+                // Tags Input
+                jQuery('#tags').tagsInput({width:'auto'});
+                get_remaining_time();
+                $('#downcounter').html(remaining_time);
+                
+
+            });
+
+            function click_action(action) {
+                $('#tags').addTag(action);
+                console.log($('#tags').val());
+            }
+
+            setInterval(function() { makeTimer(); }, 1000);
+
+            function makeTimer() {
+                let videlement = document.getElementsByTagName("video");
+
+                if(typeof(videlement[0]) !== 'undefined' && click_handler_added == false) {
+                    videlement[0].onplay = function() {
+                        let layer1canvas = document.createElement('canvas');
+
+                        
+                        layer1canvas.id = "layer1";
+                        layer1canvas.width = videlement[0].getBoundingClientRect().width;
+                        layer1canvas.height = videlement[0].getBoundingClientRect().height;
+                        layer1canvas.style.position = "absolute";
+                        layer1canvas.style.top = "0px";
+                        layer1canvas.style.left = "0px";
+                        layer1canvas.style.zIndex = 2;
+
+                        segmentation_canvas = document.createElement('canvas');
+                        segmentation_canvas.id = "seg_canvas";
+                        segmentation_canvas.width = videlement[0].getBoundingClientRect().width;
+                        segmentation_canvas.height = videlement[0].getBoundingClientRect().height;
+            
+                        videlement[0].parentNode.appendChild(layer1canvas);
+                        if (layer1 == null)
+                            layer1 = document.getElementById('layer1');
+                        
+                        layer1.addEventListener('click', function(event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            console.log("clicked at ", event.offsetX, ", ", event.offsetY);
+                            image.src = 'data:image/jpg;base64,' + segmentationmetadata[0]['metadata'].mjpg;
+
+
+                            let context = segmentation_canvas.getContext('2d');
+                            context.drawImage(image, 0, 0, layer1.width, layer1.height);
+                            var data = context.getImageData(event.offsetX, event.offsetY, 1, 1).data;
+                            if ( (data[0] + data[1] + data[2]) > 100 ) {
+                                let i0 = Math.round(data[0]/50.0) - 1;
+                                let i1 = Math.round(data[1]/50.0) - 1;
+                                let i2 = Math.round(data[2]/50.0) - 1;
+
+                                if (i0 >=0 && i1 >=0 && i2 >=0){
+                                    let index = i0 * 25 + i1 * 5 + i2;
+                                    
+                                    $('#tags').addTag(coco_classes[index]);
+                                } 
+                            }
+
+                        });
+                        layer1.addEventListener('mousemove', function(event) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            image.src = 'data:image/jpg;base64,' + segmentationmetadata[0]['metadata'].mjpg;
+                            let context = segmentation_canvas.getContext('2d');
+                            context.drawImage(image, 0, 0, layer1.width, layer1.height);
+                            var data = context.getImageData(event.offsetX, event.offsetY, 1, 1).data;
+                            $("body").css("cursor", "default");
+                            if ( (data[0] + data[1] + data[2]) > 100 ) {
+                                let i0 = Math.round(data[0]/50.0) - 1;
+                                let i1 = Math.round(data[1]/50.0) - 1;
+                                let i2 = Math.round(data[2]/50.0) - 1;
+
+                                if (i0 >=0 && i1 >=0 && i2 >=0){
+                                    let index = i0 * 25 + i1 * 5 + i2;
+                                    console.log("pixel values:", data[0], data[1], data[2], i0, i1, i2, "calculated index:", index, coco_classes[index]);
+                                    $("body").css("cursor", "pointer");
+                                } 
+                            }
+
+                        }); 
+                    }
+                }
+                
+                remaining_time -= 1;
+                $('#downcounter').html(remaining_time);
+                parse_metadata();
+                render_metapanel(meta_objects);
+
+                if (remaining_time == 0) {
+                    // post feedback data
+                    if (!manual_sent)
+                        post_feedback();
+                    
+                    // reset downcounter
+                    get_remaining_time();
+                    manual_sent = false;
+
+                    $('#tags').removeTag('');
+                    meta_objects = [];
+                }
+
+            }
+
+            function post_feedback() {
+                let feedback = $('#tags').val();
+
+                if (feedback == '')
+                    return;
+
+                $.ajax({
+                    url: '{% url "interactive_player:feedback" %}',
+                    method: "POST",
+                    data: {
+                        'feedback': feedback,
+                        'window_id': window_id,
+                        csrfmiddlewaretoken: '{{ csrf_token }}'
+                    },
+                    success: function() {
+                        console.log('successfully submitted');
+
+                        },
+                    error: function(data) {
+
+                    }
+                });
+
+                get_remaining_time();
+                $("#metadata_panel").empty();
+            }
+
+            function get_remaining_time() {
+                $.ajax({
+                    url: '{% url "interactive_player:downcount" %}',
+                    method: "get",
+                    success: function(data) {
+                        remaining_time = data.remaining;
+                        window_id = data.window_id;
+                    },
+                    error: function(data) {
+                    }
+                });
+
+            }
+
+            function on_click_send() {
+                if(manual_sent) {
+                    alert("Feedback already sent. Please wait until next window starts!");
+                    return;
+                }    
+                post_feedback();
+                manual_sent = true;
+
+            }
+
+            function parse_metadata() {                
+                facemetadata.forEach(function (item, index) {
+                    framemetadata = item.metadata;
+                    framemetadata.forEach(function (object, i) {
+                        if (meta_objects.some(mobj => object.name)) {
+                        } else {
+                            meta_objects.push([object.name, false]);
+                        }
+                    }); 
+                });
+
+                // facemetadata = [];
+
+                segmentationmetadata.forEach(function (item, index) {
+                    detected_objects = item.metadata;
+                    detected_instances.push([detected_objects, false]);
+                });
+                
+                //segmentationmetadata = [];
+            }
+
+            function render_metapanel(metaobjects) {
+                let metapanel = document.getElementById('metadata_panel');
+                metapanel.innerHTML = '';
+                //console.log(meta_objects);
+                meta_objects.forEach(function (item, index) {
+                    //console.log(item);
+                    if (!item[1]) {
+                        var elm = '<button type="button" class="btn btn-danger btn-rounded m-b-5" ' +
+                        'onclick="click_action(\'' + item[0] + '\')">'+ item[0] + '</button>';
+                        $(elm).appendTo(metapanel);
+                        item[1] = true;
+                    }
+                });
+                meta_objects = [];
+
+                detected_instances.forEach(function (item, index) {
+                    if (!item[1]) {
+                        let detected_objects = item[0].detected_objects;
+
+                        detected_objects.forEach(function (item, index){
+                            var elm = '<button type="button" class="btn btn-danger btn-rounded m-b-5" ' +
+                                        'onclick="click_action(\'' + item.Class + '\')">'+ item.Class + '</button>';
+                            $(elm).appendTo(metapanel);
+                        });
+                        item[1] = true;
+                        
+                    }
+                });
+
+                detected_instances = [];
+            }
+
+
+
+        </script>
+    </body>
+</html>

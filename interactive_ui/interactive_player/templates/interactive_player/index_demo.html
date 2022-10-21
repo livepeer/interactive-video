@@ -1,0 +1,342 @@
+{% load static %}
+<html>
+    <head>
+        <title>MistServer Meta-player</title>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+        <meta name="viewport" content="width=400">
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        
+        <link rel="shortcut icon" href={% static "imgs/play.svg" %}>
+        <script>
+          var maskmetadata = [];
+        </script>
+
+        <script src={% static "util.js" %}></script>
+        <script src={% static "skins.js" %}></script>
+        <script src={% static "controls.js" %}></script>
+        <script src={% static "player.js" %}></script>
+
+        <script src={% static "wrappers/html5.js" %}></script>
+        <script src={% static "wrappers/videojs.js" %}></script>
+        <script src={% static "wrappers/dashjs.js" %}></script>
+        <script src={% static "wrappers/webrtc.js" %}></script>
+        <script src={% static "wrappers/flash_strobe.js" %}></script>
+        <script src={% static "wrappers/mews.js" %}></script>
+        <script src={% static "wrappers/flv.js" %}></script>
+
+        <script>
+            try {
+              //add these to point to the unminified and unconcatenated versions of the css files
+              MistSkins.default.css.general = '{% static "skins/general.css" %}';
+              MistSkins.dev.css.default = '{% static "skins/default.css" %}';
+              
+             
+              //use local player scripts
+              mistplayers.dashjs.scriptsrc = function(){ return '{% static "players/dash.all.min.js" %}'; };
+              mistplayers.videojs.scriptsrc = function(){ return '{% static "players/video.js" %}'; };
+              mistplayers.flv.scriptsrc = function(){ return '{% static "players/flv.min.js" %}'; };
+              mistplayers.hlsjs.scriptsrc = function(){ return '{% static "players/hls.js" %}'; };
+            }
+            catch(e){}
+        </script>
+        <style>
+            .mistvideo-progress .bar { background-color: transparent !important; } 
+            body {
+            padding: 0;
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #0f0f0f;
+            color: #aaa;
+            overflow: hidden;
+            display: flex;
+            flex-flow: column nowrap;
+            align-items: center;
+            }
+            
+            .videocontainer {
+            flex-grow: 1;
+            flex-shrink: 1;
+            margin: 1em 0;
+            display: flex;
+            align-items: center;
+            max-width: 100%;
+            min-height: 4em;
+            }
+            
+            .videocontainer * {
+            /*outline: 1px solid red;*/
+            }
+            
+            .streamopts {
+            display: flex;
+            flex-flow: row nowrap;
+            z-index: 1;
+            top: 0;
+            flex-shrink: 0;
+            width: 400px;
+            flex-shrink: 0;
+            min-height: 2em;
+            }
+            .streamopts > * {
+            display: flex;
+            flex-flow: column nowrap;
+            width: 50%;
+            }
+            
+            .controlcont {
+            display: flex;
+            flex-flow: row nowrap;
+            align-items: baseline;
+            }
+            .controlcont > *:not(:first-child) {
+            margin-left: 0.5em;
+            }
+            
+            .streamOptions {
+            flex-shrink: 1;
+            width: 30em;
+            min-height: 2em;
+            }
+            .streamOptions:focus {
+            z-index: 99;
+            }
+            
+            a {
+            color: cyan;
+            }
+            
+            
+            h2 {
+            margin: 0;
+            }
+            
+            textarea {
+            font-size: 0.8em;
+            max-height: 20em;
+            overflow-y: auto;
+            }
+    
+            .box {
+                    border: 3px solid #FF0000;
+                    width: 0px;
+                    height: 0px;
+                    position: absolute;
+                    opacity: 0.5;
+                    cursor: move;
+                }
+    
+            .textpanel {
+            display: flex;
+            flex-flow: row nowrap;
+            top: 0;
+            font-size: 2.0em;
+            width: 1080px;
+            flex-shrink: 0;
+            min-height: 2em;
+            }
+            
+        </style>
+      
+        <script>     
+            var video;
+            var MistVideoObject = {};
+            var cont;
+            var videlem;
+            var textpanel;
+            var opts = {
+                stream: 'test',
+                opts: {
+                    host: location.protocol+"//"+location.hostname+":8080",
+                    skin: "dev",
+                    loop: true,
+                    forcePlayer:"mews",
+                }
+            };
+                        
+            
+            //some stream presets for the datalist
+            var streams = [''];
+            //some host presets for the datalist
+            var hosts = ['http://localhost:8080'];
+            try {
+                var saved = JSON.parse(localStorage["embedtest_prev"]);
+                if (saved.streams) { streams = saved.streams; }
+                if (saved.hosts) { hosts = saved.hosts; }
+            }
+            catch (e) {}
+    
+            
+            //init function that is called when the body is loaded
+            function mistinit(forceStream) {
+            console.warn("Testing page is initing a new player");
+            if (MistVideoObject.reference) { MistVideoObject.reference.unload("Testing page is reloading player"); }
+            if (forceStream) {
+                opts.stream = forceStream;
+                opts.opts.host = "http://localhost:8080";
+            }
+            
+            document.body.innerHTML = ''; //reset the page
+            document.body.appendChild(cont);           
+            
+            //and one for the actual stream
+            var videocont = document.createElement('div');
+            videocont.className = "videocontainer";
+            document.body.appendChild(videocont);
+            videlem = videocont;
+    
+            
+            opts.opts.target = videocont;
+            opts.opts.MistVideoObject = MistVideoObject;
+            
+    
+            // added by nick
+            var videotextpanel = document.createElement("textarea");
+            videotextpanel.className = "textpanel";
+    
+            document.body.appendChild(videotextpanel);
+            textpanel = videotextpanel;
+            
+            video = mistPlay(opts.stream,opts.opts);
+            }
+            
+            
+            function closestIndex(num, arr) {
+            var curr = arr[0],
+                diff = Math.abs(num - curr),
+                index = 0;
+    
+            for (var val = 0; val < arr.length; val++) {
+                let newdiff = Math.abs(num - arr[val]);
+                
+                // break if timediff is less than 100ms
+                if (newdiff < 100) {
+                    index = val;
+                    break;  
+                }
+                if (newdiff < diff) {
+                    diff = newdiff;
+                    curr = arr[val];
+                    index = val;
+                }
+            }
+            return index;
+            }
+    
+    
+            function removeElementsByClass(className) {
+            var elements = document.getElementsByClassName(className);
+            while (elements.length > 0) {
+                elements[0].parentNode.removeChild(elements[0]);
+            }
+            }
+    
+    
+            setInterval(drawmetaimage, 33);
+    
+            var metapanelInit = 0;
+            let image = null;
+            var ctx = null;
+            var layer1 = null;
+            var last_timestamp = null;
+    
+            function drawmetaimage() {
+            videlement = document.getElementsByTagName("video");
+    
+            if(typeof(videlement[0]) !== 'undefined') {
+                if (!metapanelInit) {
+    
+                }
+                
+                videlement[0].onplay = function() {
+                maskmetadata = [];
+                //nick added
+                
+                let layer1canvas = document.createElement('canvas');
+                layer1canvas.id = "layer1";
+                layer1canvas.width = videlement[0].getBoundingClientRect().width;
+                layer1canvas.height = videlement[0].getBoundingClientRect().height;
+                layer1canvas.style.position = "absolute";
+                layer1canvas.style.top = "0px";
+                layer1canvas.style.left = "0px";
+                layer1canvas.style.zIndex = 2;
+                layer1canvas.style.opacity = "0.3";
+    
+                videlement[0].parentNode.appendChild(layer1canvas);
+                };
+    
+                if (layer1 == null)
+                layer1 = document.getElementById('layer1');
+                
+    
+                if (layer1 == null)
+                return;
+    
+                if (ctx == null) {
+                ctx=layer1.getContext('2d');
+                ctx.strokeStyle = "red";
+                ctx.fillStyle = "red";
+                ctx.lineWidth = 5;
+                }
+                if (maskmetadata.length > 0) {
+                let cur_time = videlement[0].currentTime * 1000;
+                if ((cur_time - last_timestamp) > 150)
+                    ctx.clearRect(0, 0, layer1.width, layer1.height);
+                maskdata = maskmetadata[closestIndex(videlement[0].currentTime * 1000, maskmetadata)];
+                if (Math.abs(cur_time - maskdata.timestamp) > 1500) {
+                console.warn("out of sync, ignoring meta");
+                return;
+                }
+                let arrayLen = maskdata.metadata.length;
+                for (let i = 0; i < arrayLen; i++) {
+                    let bbox = maskdata.metadata[i]["bbox"];
+                    let bboxarray = bbox.split(",");
+                    let metalink = maskdata.metadata[i]["metadata"];
+    
+                    if (i == 0) {
+                    // removeElementsByClass("box");
+                    let new_element = layer1.cloneNode(true);
+                    layer1.parentNode.replaceChild(new_element, layer1);
+                    layer1 = new_element;
+                    ctx=layer1.getContext('2d');
+                    ctx.strokeStyle = "red";
+                    ctx.fillStyle = "red";
+                    ctx.lineWidth = 5;
+                    
+                    ctx.clearRect(0, 0, layer1.width, layer1.height);
+                    last_timestamp = maskdata.timestamp;
+                    }
+    
+                    let path = new Path2D();
+                    path.rect(bboxarray[0] * layer1.width/400, bboxarray[1] * layer1.height/300, bboxarray[2] * layer1.width/400, bboxarray[3] * layer1.height/300);
+                    ctx.strokeStyle = "red";
+                    ctx.fillStyle = "red";
+                    ctx.lineWidth = 5;
+                    ctx.stroke(path); 
+    
+                    layer1.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (ctx.isPointInPath(path, event.offsetX, event.offsetY)) {
+                        console.log(metalink);
+                        window.open(metalink, "_blank");
+                    }
+    
+                    });  
+                }
+                return;
+                }
+            }
+            }
+    
+            function go() {
+                cont = document.createElement("div");           
+                mistinit();
+            }
+            
+        </script>
+    </head>
+
+    <body onload=go()>
+    </body>
+</html>
