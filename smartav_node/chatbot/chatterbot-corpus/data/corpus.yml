@@ -1,0 +1,15 @@
+categories:
+- corpus
+conversations:
+- text: I am playing a guitar. 
+  question: What kind of music do you like?
+  options:  
+    - I like jazz.
+    - I like rock.
+    - I like classic.
+- text: I am playing soccer.
+  question: Which is your favorite soccer club?
+  options:  
+    - Real Madrid
+    - Barcelona
+    - Liverpool
