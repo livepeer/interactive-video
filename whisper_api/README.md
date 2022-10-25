@@ -1,18 +1,18 @@
-# whisper_flask
+# whisper_api
 ## Prerequisite
-1. Install Nvidia drivers on ubuntu-18.04 machine.
+1. Install Nvidia drivers.
 2. Install CUDA toolkit 10.2.
 3. Install cudnn8.2.1.
 4. Install ffmpeg
 
 ## Installation
-1. ```conda create -n whisper_flask python=3.10```
-2. ```conda activate whisper_flask```
+1. ```conda create -n whisper_api python=3.10```
+2. ```conda activate whisper_api```
 3. ```sudo apt install portaudio19-dev python-pyaudio python3-pyaudio```
 4. ```pip install -r requirements.txt```
 
 ## Run
-```gunicorn -w <amount of workers> -b <host:port> --timeout 300 wsgi:app```
+```gunicorn -w <number of workers> -b <host:port> --timeout 300 wsgi:app```
 
 ### Endpoints
 1. load model  

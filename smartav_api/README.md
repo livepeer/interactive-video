@@ -1,6 +1,6 @@
-# flask_server
+# smartav_api
 ## Prerequisite
-1. Install Nvidia drivers on ubuntu-18.04 machine.
+1. Install Nvidia drivers.
 2. Install CUDA toolkit 10.2.
 3. Install cudnn8.2.1.
 4. Install PostgreSQL
@@ -16,7 +16,7 @@
 5. ```pip install -r requirements.txt```
   Please pay attention to the version of onnxruntime-gpu. Please install suitable version of onnxruntime according to the versions of cuda and cudnn,you can find the table by the link: https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html. If you go through this guide, you can ignore this attention.
 6. ```pip install torch==1.9.0+cu102 torchvision==0.10.0+cu102 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html```
-7. ```git clone https://github.com/JamesWanglf/flask_server.git```
+7. ```git clone https://github.com/livepeer/interactive-video.git```
 ## Download models
 1. For face detection node, please download the model.
    ```
