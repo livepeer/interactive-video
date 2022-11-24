@@ -37,4 +37,11 @@ mathparse>=0.1,<0.2
 python-dateutil>=2.8,<2.9
 pytz
 sqlalchemy>=1.3,<1.4
+# Plotting for instance segmentation
+pandas>=1.1.4
+seaborn>=0.11.0
+# Extras for instance segmentation
+ipython  # interactive notebook
+psutil  # system utilization
+thop>=0.1.1  # FLOPs computation
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.4.0/en_core_web_sm-3.4.0.tar.gz#egg=en_core_web_sm

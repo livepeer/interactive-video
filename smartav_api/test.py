@@ -128,18 +128,18 @@ def image_captioning_test():
     print(response.text)
 
 
-def instance_segmentation_init_engine_test():
-    url = f'{hostname}/instance-segmentation/init-engine'
+def instance_segmentation_load_model_test():
+    url = f'{hostname}/instance-segmentation/load-model'
 
     headers = {
         'Content-Type': 'application/json'
     }
 
     payloads = {
-        'model': 'yolact_resnet50_54_800000.pth'
+        "weights": "instance_segmentation/yolov7-seg.pt"
     }
 
-    res = requests.get(url, headers=headers, data=json.dumps(payloads))
+    res = requests.post(url, headers=headers, data=json.dumps(payloads))
 
     print(res.status_code)
     print(res.text)
@@ -153,8 +153,8 @@ def instance_segmentation_detect_objects_test():
 
         payload = {
             'image': f'data:image/jpeg;base64,{base64_img}',
-            'top_k': 8,
-            'score_threshold': 0.5
+            'top_k': 12,
+            'score_threshold': 0.4
         }
 
     url = f'{hostname}/instance-segmentation/detect-objects'
@@ -176,7 +176,7 @@ if __name__ == '__main__':
     # clear_samples()
 
     # # # Update sample database with the images in /dataset directory
-    update_sample_database_test()
+    # update_sample_database_test()
 
     # # Update sample metadata
     # update_sample_metadata('unknown_person_1')
@@ -189,7 +189,7 @@ if __name__ == '__main__':
         # image_captioning_test()
 
         # # Test instance segmentation init engine
-        # instance_segmentation_init_engine_test()
+        instance_segmentation_load_model_test()
 
         # # Test instance segmentation detect objects
-        # instance_segmentation_detect_objects_test()
+        instance_segmentation_detect_objects_test()

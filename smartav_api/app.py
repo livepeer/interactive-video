@@ -5,7 +5,7 @@ from flask import Flask, request, Response, jsonify, make_response
 from face_recognition.face_detection import main as face_detection_main
 from face_recognition.face_detection.common import set_env
 from image_captioning import image_captioning
-from instance_segmentation import main as instance_segmentation_main
+from instance_segmentation.segment import predict as instance_segmentation_predict
 from chatbot import main as chatbot_main
 
 
@@ -249,18 +249,43 @@ def image_captioning_method():
     return make_response(jsonify(response), 200)
 
 
-@app.route('/instance-segmentation/init-engine', methods=['GET'])
-def instance_segmentation_init_engine():
+@app.route('/instance-segmentation/load-model', methods=['POST'])
+def instance_segmentation_load_model():
     data = request.json
 
-    if 'model' in data:
-        print(f'Model: {data["model"]}')
+    weights = 'instance_segmentation/yolov7-seg.pt'
+    if 'weights' in data:
+        weights = data['weights']
 
-        instance_segmentation_main.init_engine(data['model'])
+    device = 0
+    if 'device' in data:
+        device = data['device']
+        if device not in [0, 1, 2, 3, 'cpu']:
+            return Response('Bad request', status=400)
 
-        return Response('Loading model... Done.', status=200)
+    dataset = 'instance_segmentation/data/coco.yml'
+    if 'dataset' in data:
+        dataset = data['dataset']
     
-    return Response('Bad request. Your request is missing "model".', 400)
+    half = False
+    if 'half' in data:
+        half = bool(data['half'])
+    
+    dnn = False
+    if 'dnn' in data:
+        dnn = bool(data['dnn'])
+    
+    res, error = instance_segmentation_predict.load_model(
+        weights=weights,
+        device=device,
+        data=dataset,
+        half=half,
+        dnn=dnn
+    )
+    if res:
+        return Response('success', status=200)
+    
+    return Response(error, status=500)
 
 
 @app.route('/instance-segmentation/detect-objects', methods=['POST'])
@@ -286,9 +311,19 @@ def instance_segmentation_detect_objects():
         except:
             pass
 
-    result = instance_segmentation_main.process_image(img_data, top_k, score_threshold)
+    iou_threshold = 0.45
+    if 'iou_threshold' in data:
+        try:
+            iou_threshold = float(data['iou_threshold'])
+        except:
+            pass
 
-    if result is None:
-        return Response('Please init engine first by calling "/instance-segmentation/init-engine".', 500)
+    result = instance_segmentation_predict.process_image(
+        image_data=img_data,
+        weights='instance_segmentation/yolov7-seg.pt',
+        conf_thres=score_threshold,
+        iou_thres=iou_threshold,
+        max_det=top_k,
+    )
 
     return make_response(result, 200)

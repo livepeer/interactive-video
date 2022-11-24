@@ -140,6 +140,7 @@ text-generation/
 image_captioning/checkpoints/
 instance_segmentation/weights/
 results/
+*.pt
 
 # test data
 face_recognition/images/*

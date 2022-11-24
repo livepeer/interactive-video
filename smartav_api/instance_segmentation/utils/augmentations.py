@@ -1,688 +1,348 @@
-import torch
-from torchvision import transforms
+# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+"""
+Image augmentation functions
+"""
+
+import math
+import random
+
 import cv2
 import numpy as np
-import types
-from numpy import random
-from math import sqrt
+import torchvision.transforms as T
+import torchvision.transforms.functional as TF
 
-from instance_segmentation.data import cfg, MEANS, STD
+from utils.general import LOGGER, check_version, colorstr, resample_segments, segment2box
+from utils.metrics import bbox_ioa
 
-
-def intersect(box_a, box_b):
-    max_xy = np.minimum(box_a[:, 2:], box_b[2:])
-    min_xy = np.maximum(box_a[:, :2], box_b[:2])
-    inter = np.clip((max_xy - min_xy), a_min=0, a_max=np.inf)
-    return inter[:, 0] * inter[:, 1]
+IMAGENET_MEAN = 0.485, 0.456, 0.406  # RGB mean
+IMAGENET_STD = 0.229, 0.224, 0.225  # RGB standard deviation
 
 
-def jaccard_numpy(box_a, box_b):
-    """Compute the jaccard overlap of two sets of boxes.  The jaccard overlap
-    is simply the intersection over union of two boxes.
-    E.g.:
-        A ∩ B / A ∪ B = A ∩ B / (area(A) + area(B) - A ∩ B)
-    Args:
-        box_a: Multiple bounding boxes, Shape: [num_boxes,4]
-        box_b: Single bounding box, Shape: [4]
-    Return:
-        jaccard overlap: Shape: [box_a.shape[0], box_a.shape[1]]
-    """
-    inter = intersect(box_a, box_b)
-    area_a = ((box_a[:, 2]-box_a[:, 0]) *
-              (box_a[:, 3]-box_a[:, 1]))  # [A,B]
-    area_b = ((box_b[2]-box_b[0]) *
-              (box_b[3]-box_b[1]))  # [A,B]
-    union = area_a + area_b - inter
-    return inter / union  # [A,B]
+class Albumentations:
+    # YOLOv5 Albumentations class (optional, only used if package is installed)
+    def __init__(self):
+        self.transform = None
+        prefix = colorstr('albumentations: ')
+        try:
+            import albumentations as A
+            check_version(A.__version__, '1.0.3', hard=True)  # version requirement
+
+            T = [
+                A.Blur(p=0.01),
+                A.MedianBlur(p=0.01),
+                A.ToGray(p=0.01),
+                A.CLAHE(p=0.01),
+                A.RandomBrightnessContrast(p=0.0),
+                A.RandomGamma(p=0.0),
+                A.ImageCompression(quality_lower=75, p=0.0)]  # transforms
+            self.transform = A.Compose(T, bbox_params=A.BboxParams(format='yolo', label_fields=['class_labels']))
+
+            LOGGER.info(prefix + ', '.join(f'{x}'.replace('always_apply=False, ', '') for x in T if x.p))
+        except ImportError:  # package not installed, skip
+            pass
+        except Exception as e:
+            LOGGER.info(f'{prefix}{e}')
+
+    def __call__(self, im, labels, p=1.0):
+        if self.transform and random.random() < p:
+            new = self.transform(image=im, bboxes=labels[:, 1:], class_labels=labels[:, 0])  # transformed
+            im, labels = new['image'], np.array([[c, *b] for c, b in zip(new['class_labels'], new['bboxes'])])
+        return im, labels
 
 
-class Compose(object):
-    """Composes several augmentations together.
-    Args:
-        transforms (List[Transform]): list of transforms to compose.
-    Example:
-        >>> augmentations.Compose([
-        >>>     transforms.CenterCrop(10),
-        >>>     transforms.ToTensor(),
-        >>> ])
-    """
-
-    def __init__(self, transforms):
-        self.transforms = transforms
-
-    def __call__(self, img, masks=None, boxes=None, labels=None):
-        for t in self.transforms:
-            img, masks, boxes, labels = t(img, masks, boxes, labels)
-        return img, masks, boxes, labels
+def normalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD, inplace=False):
+    # Denormalize RGB images x per ImageNet stats in BCHW format, i.e. = (x - mean) / std
+    return TF.normalize(x, mean, std, inplace=inplace)
 
 
-class Lambda(object):
-    """Applies a lambda as a transform."""
-
-    def __init__(self, lambd):
-        assert isinstance(lambd, types.LambdaType)
-        self.lambd = lambd
-
-    def __call__(self, img, masks=None, boxes=None, labels=None):
-        return self.lambd(img, masks, boxes, labels)
+def denormalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD):
+    # Denormalize RGB images x per ImageNet stats in BCHW format, i.e. = x * std + mean
+    for i in range(3):
+        x[:, i] = x[:, i] * std[i] + mean[i]
+    return x
 
 
-class ConvertFromInts(object):
-    def __call__(self, image, masks=None, boxes=None, labels=None):
-        return image.astype(np.float32), masks, boxes, labels
+def augment_hsv(im, hgain=0.5, sgain=0.5, vgain=0.5):
+    # HSV color-space augmentation
+    if hgain or sgain or vgain:
+        r = np.random.uniform(-1, 1, 3) * [hgain, sgain, vgain] + 1  # random gains
+        hue, sat, val = cv2.split(cv2.cvtColor(im, cv2.COLOR_BGR2HSV))
+        dtype = im.dtype  # uint8
+
+        x = np.arange(0, 256, dtype=r.dtype)
+        lut_hue = ((x * r[0]) % 180).astype(dtype)
+        lut_sat = np.clip(x * r[1], 0, 255).astype(dtype)
+        lut_val = np.clip(x * r[2], 0, 255).astype(dtype)
+
+        im_hsv = cv2.merge((cv2.LUT(hue, lut_hue), cv2.LUT(sat, lut_sat), cv2.LUT(val, lut_val)))
+        cv2.cvtColor(im_hsv, cv2.COLOR_HSV2BGR, dst=im)  # no return needed
 
 
-
-class ToAbsoluteCoords(object):
-    def __call__(self, image, masks=None, boxes=None, labels=None):
-        height, width, channels = image.shape
-        boxes[:, 0] *= width
-        boxes[:, 2] *= width
-        boxes[:, 1] *= height
-        boxes[:, 3] *= height
-
-        return image, masks, boxes, labels
-
-
-class ToPercentCoords(object):
-    def __call__(self, image, masks=None, boxes=None, labels=None):
-        height, width, channels = image.shape
-        boxes[:, 0] /= width
-        boxes[:, 2] /= width
-        boxes[:, 1] /= height
-        boxes[:, 3] /= height
-
-        return image, masks, boxes, labels
+def hist_equalize(im, clahe=True, bgr=False):
+    # Equalize histogram on BGR image 'im' with im.shape(n,m,3) and range 0-255
+    yuv = cv2.cvtColor(im, cv2.COLOR_BGR2YUV if bgr else cv2.COLOR_RGB2YUV)
+    if clahe:
+        c = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        yuv[:, :, 0] = c.apply(yuv[:, :, 0])
+    else:
+        yuv[:, :, 0] = cv2.equalizeHist(yuv[:, :, 0])  # equalize Y channel histogram
+    return cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR if bgr else cv2.COLOR_YUV2RGB)  # convert YUV image to RGB
 
 
-class Pad(object):
-    """
-    Pads the image to the input width and height, filling the
-    background with mean and putting the image in the top-left.
+def replicate(im, labels):
+    # Replicate labels
+    h, w = im.shape[:2]
+    boxes = labels[:, 1:].astype(int)
+    x1, y1, x2, y2 = boxes.T
+    s = ((x2 - x1) + (y2 - y1)) / 2  # side length (pixels)
+    for i in s.argsort()[:round(s.size * 0.5)]:  # smallest indices
+        x1b, y1b, x2b, y2b = boxes[i]
+        bh, bw = y2b - y1b, x2b - x1b
+        yc, xc = int(random.uniform(0, h - bh)), int(random.uniform(0, w - bw))  # offset x, y
+        x1a, y1a, x2a, y2a = [xc, yc, xc + bw, yc + bh]
+        im[y1a:y2a, x1a:x2a] = im[y1b:y2b, x1b:x2b]  # im4[ymin:ymax, xmin:xmax]
+        labels = np.append(labels, [[labels[i, 0], x1a, y1a, x2a, y2a]], axis=0)
 
-    Note: this expects im_w <= width and im_h <= height
-    """
-    def __init__(self, width, height, mean=MEANS, pad_gt=True):
-        self.mean = mean
-        self.width = width
-        self.height = height
-        self.pad_gt = pad_gt
+    return im, labels
 
-    def __call__(self, image, masks, boxes=None, labels=None):
-        im_h, im_w, depth = image.shape
 
-        expand_image = np.zeros(
-            (self.height, self.width, depth),
-            dtype=image.dtype)
-        expand_image[:, :, :] = self.mean
-        expand_image[:im_h, :im_w] = image
+def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
+    # Resize and pad image while meeting stride-multiple constraints
+    shape = im.shape[:2]  # current shape [height, width]
+    if isinstance(new_shape, int):
+        new_shape = (new_shape, new_shape)
 
-        if self.pad_gt:
-            expand_masks = np.zeros(
-                (masks.shape[0], self.height, self.width),
-                dtype=masks.dtype)
-            expand_masks[:,:im_h,:im_w] = masks
-            masks = expand_masks
+    # Scale ratio (new / old)
+    r = min(new_shape[0] / shape[0], new_shape[1] / shape[1])
+    if not scaleup:  # only scale down, do not scale up (for better val mAP)
+        r = min(r, 1.0)
 
-        return expand_image, masks, boxes, labels
+    # Compute padding
+    ratio = r, r  # width, height ratios
+    new_unpad = int(round(shape[1] * r)), int(round(shape[0] * r))
+    dw, dh = new_shape[1] - new_unpad[0], new_shape[0] - new_unpad[1]  # wh padding
+    if auto:  # minimum rectangle
+        dw, dh = np.mod(dw, stride), np.mod(dh, stride)  # wh padding
+    elif scaleFill:  # stretch
+        dw, dh = 0.0, 0.0
+        new_unpad = (new_shape[1], new_shape[0])
+        ratio = new_shape[1] / shape[1], new_shape[0] / shape[0]  # width, height ratios
 
-class Resize(object):
-    """ If preserve_aspect_ratio is true, this resizes to an approximate area of max_size * max_size """
+    dw /= 2  # divide padding into 2 sides
+    dh /= 2
 
-    @staticmethod
-    def calc_size_preserve_ar(img_w, img_h, max_size):
-        """ I mathed this one out on the piece of paper. Resulting width*height = approx max_size^2 """
-        ratio = sqrt(img_w / img_h)
-        w = max_size * ratio
-        h = max_size / ratio
-        return int(w), int(h)
+    if shape[::-1] != new_unpad:  # resize
+        im = cv2.resize(im, new_unpad, interpolation=cv2.INTER_LINEAR)
+    top, bottom = int(round(dh - 0.1)), int(round(dh + 0.1))
+    left, right = int(round(dw - 0.1)), int(round(dw + 0.1))
+    im = cv2.copyMakeBorder(im, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)  # add border
+    return im, ratio, (dw, dh)
 
-    def __init__(self, resize_gt=True):
-        self.resize_gt = resize_gt
-        self.max_size = cfg.max_size
-        self.preserve_aspect_ratio = cfg.preserve_aspect_ratio
 
-    def __call__(self, image, masks, boxes, labels=None):
-        img_h, img_w, _ = image.shape
-        
-        if self.preserve_aspect_ratio:
-            width, height = Resize.calc_size_preserve_ar(img_w, img_h, self.max_size)
-        else:
-            width, height = self.max_size, self.max_size
+def random_perspective(im,
+                       targets=(),
+                       segments=(),
+                       degrees=10,
+                       translate=.1,
+                       scale=.1,
+                       shear=10,
+                       perspective=0.0,
+                       border=(0, 0)):
+    # torchvision.transforms.RandomAffine(degrees=(-10, 10), translate=(0.1, 0.1), scale=(0.9, 1.1), shear=(-10, 10))
+    # targets = [cls, xyxy]
 
-        image = cv2.resize(image, (width, height))
+    height = im.shape[0] + border[0] * 2  # shape(h,w,c)
+    width = im.shape[1] + border[1] * 2
 
-        if self.resize_gt:
-            # Act like each object is a color channel
-            masks = masks.transpose((1, 2, 0))
-            masks = cv2.resize(masks, (width, height))
-            
-            # OpenCV resizes a (w,h,1) array to (s,s), so fix that
-            if len(masks.shape) == 2:
-                masks = np.expand_dims(masks, 0)
+    # Center
+    C = np.eye(3)
+    C[0, 2] = -im.shape[1] / 2  # x translation (pixels)
+    C[1, 2] = -im.shape[0] / 2  # y translation (pixels)
+
+    # Perspective
+    P = np.eye(3)
+    P[2, 0] = random.uniform(-perspective, perspective)  # x perspective (about y)
+    P[2, 1] = random.uniform(-perspective, perspective)  # y perspective (about x)
+
+    # Rotation and Scale
+    R = np.eye(3)
+    a = random.uniform(-degrees, degrees)
+    # a += random.choice([-180, -90, 0, 90])  # add 90deg rotations to small rotations
+    s = random.uniform(1 - scale, 1 + scale)
+    # s = 2 ** random.uniform(-scale, scale)
+    R[:2] = cv2.getRotationMatrix2D(angle=a, center=(0, 0), scale=s)
+
+    # Shear
+    S = np.eye(3)
+    S[0, 1] = math.tan(random.uniform(-shear, shear) * math.pi / 180)  # x shear (deg)
+    S[1, 0] = math.tan(random.uniform(-shear, shear) * math.pi / 180)  # y shear (deg)
+
+    # Translation
+    T = np.eye(3)
+    T[0, 2] = random.uniform(0.5 - translate, 0.5 + translate) * width  # x translation (pixels)
+    T[1, 2] = random.uniform(0.5 - translate, 0.5 + translate) * height  # y translation (pixels)
+
+    # Combined rotation matrix
+    M = T @ S @ R @ P @ C  # order of operations (right to left) is IMPORTANT
+    if (border[0] != 0) or (border[1] != 0) or (M != np.eye(3)).any():  # image changed
+        if perspective:
+            im = cv2.warpPerspective(im, M, dsize=(width, height), borderValue=(114, 114, 114))
+        else:  # affine
+            im = cv2.warpAffine(im, M[:2], dsize=(width, height), borderValue=(114, 114, 114))
+
+    # Visualize
+    # import matplotlib.pyplot as plt
+    # ax = plt.subplots(1, 2, figsize=(12, 6))[1].ravel()
+    # ax[0].imshow(im[:, :, ::-1])  # base
+    # ax[1].imshow(im2[:, :, ::-1])  # warped
+
+    # Transform label coordinates
+    n = len(targets)
+    if n:
+        use_segments = any(x.any() for x in segments)
+        new = np.zeros((n, 4))
+        if use_segments:  # warp segments
+            segments = resample_segments(segments)  # upsample
+            for i, segment in enumerate(segments):
+                xy = np.ones((len(segment), 3))
+                xy[:, :2] = segment
+                xy = xy @ M.T  # transform
+                xy = xy[:, :2] / xy[:, 2:3] if perspective else xy[:, :2]  # perspective rescale or affine
+
+                # clip
+                new[i] = segment2box(xy, width, height)
+
+        else:  # warp boxes
+            xy = np.ones((n * 4, 3))
+            xy[:, :2] = targets[:, [1, 2, 3, 4, 1, 4, 3, 2]].reshape(n * 4, 2)  # x1y1, x2y2, x1y2, x2y1
+            xy = xy @ M.T  # transform
+            xy = (xy[:, :2] / xy[:, 2:3] if perspective else xy[:, :2]).reshape(n, 8)  # perspective rescale or affine
+
+            # create new boxes
+            x = xy[:, [0, 2, 4, 6]]
+            y = xy[:, [1, 3, 5, 7]]
+            new = np.concatenate((x.min(1), y.min(1), x.max(1), y.max(1))).reshape(4, n).T
+
+            # clip
+            new[:, [0, 2]] = new[:, [0, 2]].clip(0, width)
+            new[:, [1, 3]] = new[:, [1, 3]].clip(0, height)
+
+        # filter candidates
+        i = box_candidates(box1=targets[:, 1:5].T * s, box2=new.T, area_thr=0.01 if use_segments else 0.10)
+        targets = targets[i]
+        targets[:, 1:5] = new[i]
+
+    return im, targets
+
+
+def copy_paste(im, labels, segments, p=0.5):
+    # Implement Copy-Paste augmentation https://arxiv.org/abs/2012.07177, labels as nx5 np.array(cls, xyxy)
+    n = len(segments)
+    if p and n:
+        h, w, c = im.shape  # height, width, channels
+        im_new = np.zeros(im.shape, np.uint8)
+        for j in random.sample(range(n), k=round(p * n)):
+            l, s = labels[j], segments[j]
+            box = w - l[3], l[2], w - l[1], l[4]
+            ioa = bbox_ioa(box, labels[:, 1:5])  # intersection over area
+            if (ioa < 0.30).all():  # allow 30% obscuration of existing labels
+                labels = np.concatenate((labels, [[l[0], *box]]), 0)
+                segments.append(np.concatenate((w - s[:, 0:1], s[:, 1:2]), 1))
+                cv2.drawContours(im_new, [segments[j].astype(np.int32)], -1, (255, 255, 255), cv2.FILLED)
+
+        result = cv2.bitwise_and(src1=im, src2=im_new)
+        result = cv2.flip(result, 1)  # augment segments (flip left-right)
+        i = result > 0  # pixels to replace
+        # i[:, :] = result.max(2).reshape(h, w, 1)  # act over ch
+        im[i] = result[i]  # cv2.imwrite('debug.jpg', im)  # debug
+
+    return im, labels, segments
+
+
+def cutout(im, labels, p=0.5):
+    # Applies image cutout augmentation https://arxiv.org/abs/1708.04552
+    if random.random() < p:
+        h, w = im.shape[:2]
+        scales = [0.5] * 1 + [0.25] * 2 + [0.125] * 4 + [0.0625] * 8 + [0.03125] * 16  # image size fraction
+        for s in scales:
+            mask_h = random.randint(1, int(h * s))  # create random masks
+            mask_w = random.randint(1, int(w * s))
+
+            # box
+            xmin = max(0, random.randint(0, w) - mask_w // 2)
+            ymin = max(0, random.randint(0, h) - mask_h // 2)
+            xmax = min(w, xmin + mask_w)
+            ymax = min(h, ymin + mask_h)
+
+            # apply random color mask
+            im[ymin:ymax, xmin:xmax] = [random.randint(64, 191) for _ in range(3)]
+
+            # return unobscured labels
+            if len(labels) and s > 0.03:
+                box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
+                ioa = bbox_ioa(box, labels[:, 1:5])  # intersection over area
+                labels = labels[ioa < 0.60]  # remove >60% obscured labels
+
+    return labels
+
+
+def mixup(im, labels, im2, labels2):
+    # Applies MixUp augmentation https://arxiv.org/pdf/1710.09412.pdf
+    r = np.random.beta(32.0, 32.0)  # mixup ratio, alpha=beta=32.0
+    im = (im * r + im2 * (1 - r)).astype(np.uint8)
+    labels = np.concatenate((labels, labels2), 0)
+    return im, labels
+
+
+def box_candidates(box1, box2, wh_thr=2, ar_thr=100, area_thr=0.1, eps=1e-16):  # box1(4,n), box2(4,n)
+    # Compute candidate boxes: box1 before augment, box2 after augment, wh_thr (pixels), aspect_ratio_thr, area_ratio
+    w1, h1 = box1[2] - box1[0], box1[3] - box1[1]
+    w2, h2 = box2[2] - box2[0], box2[3] - box2[1]
+    ar = np.maximum(w2 / (h2 + eps), h2 / (w2 + eps))  # aspect ratio
+    return (w2 > wh_thr) & (h2 > wh_thr) & (w2 * h2 / (w1 * h1 + eps) > area_thr) & (ar < ar_thr)  # candidates
+
+
+def classify_albumentations(augment=True,
+                            size=224,
+                            scale=(0.08, 1.0),
+                            hflip=0.5,
+                            vflip=0.0,
+                            jitter=0.4,
+                            mean=IMAGENET_MEAN,
+                            std=IMAGENET_STD,
+                            auto_aug=False):
+    # YOLOv5 classification Albumentations (optional, only used if package is installed)
+    prefix = colorstr('albumentations: ')
+    try:
+        import albumentations as A
+        from albumentations.pytorch import ToTensorV2
+        check_version(A.__version__, '1.0.3', hard=True)  # version requirement
+        if augment:  # Resize and crop
+            T = [A.RandomResizedCrop(height=size, width=size, scale=scale)]
+            if auto_aug:
+                # TODO: implement AugMix, AutoAug & RandAug in albumentation
+                LOGGER.info(f'{prefix}auto augmentations are currently not supported')
             else:
-                masks = masks.transpose((2, 0, 1))
-
-            # Scale bounding boxes (which are currently absolute coordinates)
-            boxes[:, [0, 2]] *= (width  / img_w)
-            boxes[:, [1, 3]] *= (height / img_h)
-
-        # Discard boxes that are smaller than we'd like
-        w = boxes[:, 2] - boxes[:, 0]
-        h = boxes[:, 3] - boxes[:, 1]
-
-        keep = (w > cfg.discard_box_width) * (h > cfg.discard_box_height)
-        masks = masks[keep]
-        boxes = boxes[keep]
-        labels['labels'] = labels['labels'][keep]
-        labels['num_crowds'] = (labels['labels'] < 0).sum()
-
-        return image, masks, boxes, labels
-
-
-class RandomSaturation(object):
-    def __init__(self, lower=0.5, upper=1.5):
-        self.lower = lower
-        self.upper = upper
-        assert self.upper >= self.lower, "contrast upper must be >= lower."
-        assert self.lower >= 0, "contrast lower must be non-negative."
-
-    def __call__(self, image, masks=None, boxes=None, labels=None):
-        if random.randint(2):
-            image[:, :, 1] *= random.uniform(self.lower, self.upper)
-
-        return image, masks, boxes, labels
-
-
-class RandomHue(object):
-    def __init__(self, delta=18.0):
-        assert delta >= 0.0 and delta <= 360.0
-        self.delta = delta
-
-    def __call__(self, image, masks=None, boxes=None, labels=None):
-        if random.randint(2):
-            image[:, :, 0] += random.uniform(-self.delta, self.delta)
-            image[:, :, 0][image[:, :, 0] > 360.0] -= 360.0
-            image[:, :, 0][image[:, :, 0] < 0.0] += 360.0
-        return image, masks, boxes, labels
-
-
-class RandomLightingNoise(object):
-    def __init__(self):
-        self.perms = ((0, 1, 2), (0, 2, 1),
-                      (1, 0, 2), (1, 2, 0),
-                      (2, 0, 1), (2, 1, 0))
-
-    def __call__(self, image, masks=None, boxes=None, labels=None):
-        # Don't shuffle the channels please, why would you do this
-
-        # if random.randint(2):
-        #     swap = self.perms[random.randint(len(self.perms))]
-        #     shuffle = SwapChannels(swap)  # shuffle channels
-        #     image = shuffle(image)
-        return image, masks, boxes, labels
-
-
-class ConvertColor(object):
-    def __init__(self, current='BGR', transform='HSV'):
-        self.transform = transform
-        self.current = current
-
-    def __call__(self, image, masks=None, boxes=None, labels=None):
-        if self.current == 'BGR' and self.transform == 'HSV':
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        elif self.current == 'HSV' and self.transform == 'BGR':
-            image = cv2.cvtColor(image, cv2.COLOR_HSV2BGR)
-        else:
-            raise NotImplementedError
-        return image, masks, boxes, labels
-
-
-class RandomContrast(object):
-    def __init__(self, lower=0.5, upper=1.5):
-        self.lower = lower
-        self.upper = upper
-        assert self.upper >= self.lower, "contrast upper must be >= lower."
-        assert self.lower >= 0, "contrast lower must be non-negative."
-
-    # expects float image
-    def __call__(self, image, masks=None, boxes=None, labels=None):
-        if random.randint(2):
-            alpha = random.uniform(self.lower, self.upper)
-            image *= alpha
-        return image, masks, boxes, labels
-
-
-class RandomBrightness(object):
-    def __init__(self, delta=32):
-        assert delta >= 0.0
-        assert delta <= 255.0
-        self.delta = delta
-
-    def __call__(self, image, masks=None, boxes=None, labels=None):
-        if random.randint(2):
-            delta = random.uniform(-self.delta, self.delta)
-            image += delta
-        return image, masks, boxes, labels
-
-
-class ToCV2Image(object):
-    def __call__(self, tensor, masks=None, boxes=None, labels=None):
-        return tensor.cpu().numpy().astype(np.float32).transpose((1, 2, 0)), masks, boxes, labels
-
-
-class ToTensor(object):
-    def __call__(self, cvimage, masks=None, boxes=None, labels=None):
-        return torch.from_numpy(cvimage.astype(np.float32)).permute(2, 0, 1), masks, boxes, labels
-
-
-class RandomSampleCrop(object):
-    """Crop
-    Arguments:
-        img (Image): the image being input during training
-        boxes (Tensor): the original bounding boxes in pt form
-        labels (Tensor): the class labels for each bbox
-        mode (float tuple): the min and max jaccard overlaps
-    Return:
-        (img, boxes, classes)
-            img (Image): the cropped image
-            boxes (Tensor): the adjusted bounding boxes in pt form
-            labels (Tensor): the class labels for each bbox
-    """
-    def __init__(self):
-        self.sample_options = (
-            # using entire original input image
-            None,
-            # sample a patch s.t. MIN jaccard w/ obj in .1,.3,.4,.7,.9
-            (0.1, None),
-            (0.3, None),
-            (0.7, None),
-            (0.9, None),
-            # randomly sample a patch
-            (None, None),
-        )
-
-    def __call__(self, image, masks, boxes=None, labels=None):
-        height, width, _ = image.shape
-        while True:
-            # randomly choose a mode
-            mode = random.choice(self.sample_options)
-            if mode is None:
-                return image, masks, boxes, labels
-
-            min_iou, max_iou = mode
-            if min_iou is None:
-                min_iou = float('-inf')
-            if max_iou is None:
-                max_iou = float('inf')
-
-            # max trails (50)
-            for _ in range(50):
-                current_image = image
-
-                w = random.uniform(0.3 * width, width)
-                h = random.uniform(0.3 * height, height)
-
-                # aspect ratio constraint b/t .5 & 2
-                if h / w < 0.5 or h / w > 2:
-                    continue
-
-                left = random.uniform(width - w)
-                top = random.uniform(height - h)
-
-                # convert to integer rect x1,y1,x2,y2
-                rect = np.array([int(left), int(top), int(left+w), int(top+h)])
-
-                # calculate IoU (jaccard overlap) b/t the cropped and gt boxes
-                overlap = jaccard_numpy(boxes, rect)
-
-                # This piece of code is bugged and does nothing:
-                # https://github.com/amdegroot/ssd.pytorch/issues/68
-                #
-                # However, when I fixed it with overlap.max() < min_iou,
-                # it cut the mAP in half (after 8k iterations). So it stays.
-                #
-                # is min and max overlap constraint satisfied? if not try again
-                if overlap.min() < min_iou and max_iou < overlap.max():
-                    continue
-
-                # cut the crop from the image
-                current_image = current_image[rect[1]:rect[3], rect[0]:rect[2],
-                                              :]
-
-                # keep overlap with gt box IF center in sampled patch
-                centers = (boxes[:, :2] + boxes[:, 2:]) / 2.0
-
-                # mask in all gt boxes that above and to the left of centers
-                m1 = (rect[0] < centers[:, 0]) * (rect[1] < centers[:, 1])
-
-                # mask in all gt boxes that under and to the right of centers
-                m2 = (rect[2] > centers[:, 0]) * (rect[3] > centers[:, 1])
-
-                # mask in that both m1 and m2 are true
-                mask = m1 * m2
-
-                # [0 ... 0 for num_gt and then 1 ... 1 for num_crowds]
-                num_crowds = labels['num_crowds']
-                crowd_mask = np.zeros(mask.shape, dtype=np.int32)
-
-                if num_crowds > 0:
-                    crowd_mask[-num_crowds:] = 1
-
-                # have any valid boxes? try again if not
-                # Also make sure you have at least one regular gt
-                if not mask.any() or np.sum(1-crowd_mask[mask]) == 0:
-                    continue
-
-                # take only the matching gt masks
-                current_masks = masks[mask, :, :].copy()
-
-                # take only matching gt boxes
-                current_boxes = boxes[mask, :].copy()
-
-                # take only matching gt labels
-                labels['labels'] = labels['labels'][mask]
-                current_labels = labels
-
-                # We now might have fewer crowd annotations
-                if num_crowds > 0:
-                    labels['num_crowds'] = np.sum(crowd_mask[mask])
-
-                # should we use the box left and top corner or the crop's
-                current_boxes[:, :2] = np.maximum(current_boxes[:, :2],
-                                                  rect[:2])
-                # adjust to crop (by substracting crop's left,top)
-                current_boxes[:, :2] -= rect[:2]
-
-                current_boxes[:, 2:] = np.minimum(current_boxes[:, 2:],
-                                                  rect[2:])
-                # adjust to crop (by substracting crop's left,top)
-                current_boxes[:, 2:] -= rect[:2]
-
-                # crop the current masks to the same dimensions as the image
-                current_masks = current_masks[:, rect[1]:rect[3], rect[0]:rect[2]]
-
-                return current_image, current_masks, current_boxes, current_labels
-
-
-class Expand(object):
-    def __init__(self, mean):
-        self.mean = mean
-
-    def __call__(self, image, masks, boxes, labels):
-        if random.randint(2):
-            return image, masks, boxes, labels
-
-        height, width, depth = image.shape
-        ratio = random.uniform(1, 4)
-        left = random.uniform(0, width*ratio - width)
-        top = random.uniform(0, height*ratio - height)
-
-        expand_image = np.zeros(
-            (int(height*ratio), int(width*ratio), depth),
-            dtype=image.dtype)
-        expand_image[:, :, :] = self.mean
-        expand_image[int(top):int(top + height),
-                     int(left):int(left + width)] = image
-        image = expand_image
-
-        expand_masks = np.zeros(
-            (masks.shape[0], int(height*ratio), int(width*ratio)),
-            dtype=masks.dtype)
-        expand_masks[:,int(top):int(top + height),
-                       int(left):int(left + width)] = masks
-        masks = expand_masks
-
-        boxes = boxes.copy()
-        boxes[:, :2] += (int(left), int(top))
-        boxes[:, 2:] += (int(left), int(top))
-
-        return image, masks, boxes, labels
-
-
-class RandomMirror(object):
-    def __call__(self, image, masks, boxes, labels):
-        _, width, _ = image.shape
-        if random.randint(2):
-            image = image[:, ::-1]
-            masks = masks[:, :, ::-1]
-            boxes = boxes.copy()
-            boxes[:, 0::2] = width - boxes[:, 2::-2]
-        return image, masks, boxes, labels
-
-
-class RandomFlip(object):
-    def __call__(self, image, masks, boxes, labels):
-        height , _ , _ = image.shape
-        if random.randint(2):
-            image = image[::-1, :]
-            masks = masks[:, ::-1, :]
-            boxes = boxes.copy()
-            boxes[:, 1::2] = height - boxes[:, 3::-2]
-        return image, masks, boxes, labels
-
-
-class RandomRot90(object):
-    def __call__(self, image, masks, boxes, labels):
-        old_height , old_width , _ = image.shape
-        k = random.randint(4)
-        image = np.rot90(image,k)
-        masks = np.array([np.rot90(mask,k) for mask in masks])
-        boxes = boxes.copy()
-        for _ in range(k):
-            boxes = np.array([[box[1], old_width - 1 - box[2], box[3], old_width - 1 - box[0]] for box in boxes])
-            old_width, old_height = old_height, old_width
-        return image, masks, boxes, labels
-
-
-class SwapChannels(object):
-    """Transforms a tensorized image by swapping the channels in the order
-     specified in the swap tuple.
-    Args:
-        swaps (int triple): final order of channels
-            eg: (2, 1, 0)
-    """
-
-    def __init__(self, swaps):
-        self.swaps = swaps
-
-    def __call__(self, image):
-        """
-        Args:
-            image (Tensor): image tensor to be transformed
-        Return:
-            a tensor with channels swapped according to swap
-        """
-        # if torch.is_tensor(image):
-        #     image = image.data.cpu().numpy()
-        # else:
-        #     image = np.array(image)
-        image = image[:, :, self.swaps]
-        return image
-
-
-class PhotometricDistort(object):
-    def __init__(self):
-        self.pd = [
-            RandomContrast(),
-            ConvertColor(transform='HSV'),
-            RandomSaturation(),
-            RandomHue(),
-            ConvertColor(current='HSV', transform='BGR'),
-            RandomContrast()
-        ]
-        self.rand_brightness = RandomBrightness()
-        self.rand_light_noise = RandomLightingNoise()
-
-    def __call__(self, image, masks, boxes, labels):
-        im = image.copy()
-        im, masks, boxes, labels = self.rand_brightness(im, masks, boxes, labels)
-        if random.randint(2):
-            distort = Compose(self.pd[:-1])
-        else:
-            distort = Compose(self.pd[1:])
-        im, masks, boxes, labels = distort(im, masks, boxes, labels)
-        return self.rand_light_noise(im, masks, boxes, labels)
-
-class PrepareMasks(object):
-    """
-    Prepares the gt masks for use_gt_bboxes by cropping with the gt box
-    and downsampling the resulting mask to mask_size, mask_size. This
-    function doesn't do anything if cfg.use_gt_bboxes is False.
-    """
-
-    def __init__(self, mask_size, use_gt_bboxes):
-        self.mask_size = mask_size
-        self.use_gt_bboxes = use_gt_bboxes
-
-    def __call__(self, image, masks, boxes, labels=None):
-        if not self.use_gt_bboxes:
-            return image, masks, boxes, labels
-        
-        height, width, _ = image.shape
-
-        new_masks = np.zeros((masks.shape[0], self.mask_size ** 2))
-
-        for i in range(len(masks)):
-            x1, y1, x2, y2 = boxes[i, :]
-            x1 *= width
-            x2 *= width
-            y1 *= height
-            y2 *= height
-            x1, y1, x2, y2 = (int(x1), int(y1), int(x2), int(y2))
-
-            # +1 So that if y1=10.6 and y2=10.9 we still have a bounding box
-            cropped_mask = masks[i, y1:(y2+1), x1:(x2+1)]
-            scaled_mask = cv2.resize(cropped_mask, (self.mask_size, self.mask_size))
-
-            new_masks[i, :] = scaled_mask.reshape(1, -1)
-        
-        # Binarize
-        new_masks[new_masks >  0.5] = 1
-        new_masks[new_masks <= 0.5] = 0
-
-        return image, new_masks, boxes, labels
-
-class BackboneTransform(object):
-    """
-    Transforms a BRG image made of floats in the range [0, 255] to whatever
-    input the current backbone network needs.
-
-    transform is a transform config object (see config.py).
-    in_channel_order is probably 'BGR' but you do you, kid.
-    """
-    def __init__(self, transform, mean, std, in_channel_order):
-        self.mean = np.array(mean, dtype=np.float32)
-        self.std  = np.array(std,  dtype=np.float32)
-        self.transform = transform
-
-        # Here I use "Algorithms and Coding" to convert string permutations to numbers
-        self.channel_map = {c: idx for idx, c in enumerate(in_channel_order)}
-        self.channel_permutation = [self.channel_map[c] for c in transform.channel_order]
-
-    def __call__(self, img, masks=None, boxes=None, labels=None):
-
-        img = img.astype(np.float32)
-
-        if self.transform.normalize:
-            img = (img - self.mean) / self.std
-        elif self.transform.subtract_means:
-            img = (img - self.mean)
-        elif self.transform.to_float:
-            img = img / 255
-
-        img = img[:, :, self.channel_permutation]
-
-        return img.astype(np.float32), masks, boxes, labels
-
-
-
-
-class BaseTransform(object):
-    """ Transorm to be used when evaluating. """
-
-    def __init__(self, mean=MEANS, std=STD):
-        self.augment = Compose([
-            ConvertFromInts(),
-            Resize(resize_gt=False),
-            BackboneTransform(cfg.backbone.transform, mean, std, 'BGR')
-        ])
-
-    def __call__(self, img, masks=None, boxes=None, labels=None):
-        return self.augment(img, masks, boxes, labels)
-
-import torch.nn.functional as F
-
-class FastBaseTransform(torch.nn.Module):
-    """
-    Transform that does all operations on the GPU for super speed.
-    This doesn't suppport a lot of config settings and should only be used for production.
-    Maintain this as necessary.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-        self.mean = torch.Tensor(MEANS).float().cuda()[None, :, None, None]
-        self.std  = torch.Tensor( STD ).float().cuda()[None, :, None, None]
-        self.transform = cfg.backbone.transform
-
-    def forward(self, img):
-        self.mean = self.mean.to(img.device)
-        self.std  = self.std.to(img.device)
-        
-        # img assumed to be a pytorch BGR image with channel order [n, h, w, c]
-        if cfg.preserve_aspect_ratio:
-            _, h, w, _ = img.size()
-            img_size = Resize.calc_size_preserve_ar(w, h, cfg.max_size)
-            img_size = (img_size[1], img_size[0]) # Pytorch needs h, w
-        else:
-            img_size = (cfg.max_size, cfg.max_size)
-
-        img = img.permute(0, 3, 1, 2).contiguous()
-        img = F.interpolate(img, img_size, mode='bilinear', align_corners=False)
-
-        if self.transform.normalize:
-            img = (img - self.mean) / self.std
-        elif self.transform.subtract_means:
-            img = (img - self.mean)
-        elif self.transform.to_float:
-            img = img / 255
-        
-        if self.transform.channel_order != 'RGB':
-            raise NotImplementedError
-        
-        img = img[:, (2, 1, 0), :, :].contiguous()
-
-        # Return value is in channel order [n, c, h, w] and RGB
-        return img
-
-def do_nothing(img=None, masks=None, boxes=None, labels=None):
-    return img, masks, boxes, labels
-
-
-def enable_if(condition, obj):
-    return obj if condition else do_nothing
-
-class SSDAugmentation(object):
-    """ Transform to be used when training. """
-
-    def __init__(self, mean=MEANS, std=STD):
-        self.augment = Compose([
-            ConvertFromInts(),
-            ToAbsoluteCoords(),
-            enable_if(cfg.augment_photometric_distort, PhotometricDistort()),
-            enable_if(cfg.augment_expand, Expand(mean)),
-            enable_if(cfg.augment_random_sample_crop, RandomSampleCrop()),
-            enable_if(cfg.augment_random_mirror, RandomMirror()),
-            enable_if(cfg.augment_random_flip, RandomFlip()),
-            enable_if(cfg.augment_random_flip, RandomRot90()),
-            Resize(),
-            enable_if(not cfg.preserve_aspect_ratio, Pad(cfg.max_size, cfg.max_size, mean)),
-            ToPercentCoords(),
-            PrepareMasks(cfg.mask_size, cfg.use_gt_bboxes),
-            BackboneTransform(cfg.backbone.transform, mean, std, 'BGR')
-        ])
-
-    def __call__(self, img, masks, boxes, labels):
-        return self.augment(img, masks, boxes, labels)
+                if hflip > 0:
+                    T += [A.HorizontalFlip(p=hflip)]
+                if vflip > 0:
+                    T += [A.VerticalFlip(p=vflip)]
+                if jitter > 0:
+                    color_jitter = (float(jitter),) * 3  # repeat value for brightness, contrast, satuaration, 0 hue
+                    T += [A.ColorJitter(*color_jitter, 0)]
+        else:  # Use fixed crop for eval set (reproducibility)
+            T = [A.SmallestMaxSize(max_size=size), A.CenterCrop(height=size, width=size)]
+        T += [A.Normalize(mean=mean, std=std), ToTensorV2()]  # Normalize and convert to Tensor
+        LOGGER.info(prefix + ', '.join(f'{x}'.replace('always_apply=False, ', '') for x in T if x.p))
+        return A.Compose(T)
+
+    except ImportError:  # package not installed, skip
+        pass
+    except Exception as e:
+        LOGGER.info(f'{prefix}{e}')
+
+
+def classify_transforms(size=224):
+    # Transforms to apply if albumentations not installed
+    assert isinstance(size, int), f'ERROR: classify_transforms size {size} must be integer, not (list, tuple)'
+    return T.Compose([T.ToTensor(), T.Resize(size), T.CenterCrop(size), T.Normalize(IMAGENET_MEAN, IMAGENET_STD)])
