@@ -43,7 +43,6 @@
               //add these to point to the unminified and unconcatenated versions of the css files
               MistSkins.default.css.general = '{% static "skins/general.css" %}';
               MistSkins.dev.css.default = '{% static "skins/default.css" %}';
-              
              
               //use local player scripts
               mistplayers.dashjs.scriptsrc = function(){ return '{% static "players/dash.all.min.js" %}'; };
@@ -308,6 +307,7 @@
             let click_handler_added = false;
             let layer1 = null;
             let segmentation_canvas = null;
+            let objects_track = [];            
             var image = new Image();
             let coco_classes = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
                 'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
@@ -336,6 +336,40 @@
             function click_action(action) {
                 $('#tags').addTag(action);
                 console.log($('#tags').val());
+            }
+            function getclassindex(rgbdata) {
+                let index = -1;
+                if ( (rgbdata[0] + rgbdata[1] + rgbdata[2]) > 100 ) {
+                    let i0 = Math.round(rgbdata[0]/50.0) - 1;
+                    let i1 = Math.round(rgbdata[1]/50.0) - 1;
+                    let i2 = Math.round(rgbdata[2]/50.0) - 1;
+
+                    if (i0 >=0 && i1 >=0 && i2 >=0){
+                        index = i0 * 25 + i1 * 5 + i2;
+                        console.log("pixel values:", rgbdata[0], rgbdata[1], rgbdata[2], i0, i1, i2, "calculated index:", index, coco_classes[index]);                        
+                    } 
+                }
+                return index
+            }
+            function getdistance(x1, y1, x2, y2) {
+                xd = x1-x2; yd = y1-y2;
+                dis = xd * xd + yd * yd
+                return dis
+            }
+            function addtag( mx, my, clsname) {
+                detected_objects = objects_track.length > 0 ? objects_track[0] : [];
+                oname = clsname;
+                for(let i=0; i<detected_objects.length;i++ ) {
+                    item = detected_objects[i];
+                    if (clsname == item.Class && item.subid > 0 &&
+                        mx >= item.Rect.x && mx < item.Rect.x + item.Rect.w &&
+                        my >= item.Rect.y && my < item.Rect.y + item.Rect.h) 
+                    {
+                        oname += item.subid.toString();
+                        break;
+                    }
+                }
+                $('#tags').addTag(oname);             
             }
 
             setInterval(function() { makeTimer(); }, 1000);
@@ -370,23 +404,52 @@
                             event.stopPropagation();
                             console.log("clicked at ", event.offsetX, ", ", event.offsetY);
                             image.src = 'data:image/jpg;base64,' + segmentationmetadata[0]['metadata'].mjpg;
-
-
                             let context = segmentation_canvas.getContext('2d');
                             context.drawImage(image, 0, 0, layer1.width, layer1.height);
                             var data = context.getImageData(event.offsetX, event.offsetY, 1, 1).data;
-                            if ( (data[0] + data[1] + data[2]) > 100 ) {
-                                let i0 = Math.round(data[0]/50.0) - 1;
-                                let i1 = Math.round(data[1]/50.0) - 1;
-                                let i2 = Math.round(data[2]/50.0) - 1;
-
-                                if (i0 >=0 && i1 >=0 && i2 >=0){
-                                    let index = i0 * 25 + i1 * 5 + i2;
+                            let clsid = getclassindex(data);
+                            mx = event.offsetX * 400 / layer1.width;
+                            my = event.offsetY * 300 / layer1.height;
+                            //deep copy
+                            facedata = [...facemetadata]
+                            if (clsid >= 0) {
+                                let fname = "";
+                                let mindis = Number.MAX_SAFE_INTEGER;
+                                if (coco_classes[clsid] == 'person') {
+                                    let arrayLen = facedata.length < 5 ? facedata.length : 5;
+                                    let findflag = false;
+                                    for (let i = 0; i < arrayLen && !findflag; i++) {
+                                        for ( let j = 0; j < facedata[i].metadata.length && !findflag; j++) {                                            
+                                            let bbox = facedata[i].metadata[j]["bbox"];
+                                            if (bbox !== undefined) {
+                                                let bboxarray = bbox.split(",");
+                                                cx = (Number(bboxarray[0]) + Number(bboxarray[2]) / 2) * layer1.width/400;
+                                                cy = (Number(bboxarray[1]) + Number(bboxarray[3]) / 2) * layer1.height/300;
+                                                var cdata = context.getImageData(cx, cy, 1, 1).data;
+                                                //if (data[0] == cdata[0] && data[1] == cdata[1] && data[2] == cdata[2] ) 
+                                                {
+                                                    dis = getdistance(cx, cy, event.offsetX, event.offsetY);
+                                                    if (dis < mindis) {
+                                                        fname = facedata[i].metadata[j]["name"];
+                                                        mindis = dis;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                     
-                                    $('#tags').addTag(coco_classes[index]);
-                                } 
-                            }
-
+                                    // not find same person
+                                    if (fname == "") {
+                                        //$('#tags').addTag(coco_classes[clsid]);                                        
+                                        addtag(mx, my, coco_classes[clsid]);
+                                    } else {
+                                        $('#tags').addTag(fname);
+                                    }
+                                } else {
+                                    //$('#tags').addTag(coco_classes[clsid]);
+                                    addtag(mx, my, coco_classes[clsid]);
+                                }
+                            }                           
                         });
                         layer1.addEventListener('mousemove', function(event) {
                             event.preventDefault();
@@ -396,18 +459,9 @@
                             context.drawImage(image, 0, 0, layer1.width, layer1.height);
                             var data = context.getImageData(event.offsetX, event.offsetY, 1, 1).data;
                             $("body").css("cursor", "default");
-                            if ( (data[0] + data[1] + data[2]) > 100 ) {
-                                let i0 = Math.round(data[0]/50.0) - 1;
-                                let i1 = Math.round(data[1]/50.0) - 1;
-                                let i2 = Math.round(data[2]/50.0) - 1;
-
-                                if (i0 >=0 && i1 >=0 && i2 >=0){
-                                    let index = i0 * 25 + i1 * 5 + i2;
-                                    console.log("pixel values:", data[0], data[1], data[2], i0, i1, i2, "calculated index:", index, coco_classes[index]);
-                                    $("body").css("cursor", "pointer");
-                                } 
+                            if (getclassindex(data) >= 0) {
+                                $("body").css("cursor", "pointer");
                             }
-
                         }); 
                     }
                 }
@@ -482,58 +536,87 @@
                 manual_sent = true;
 
             }
-
-            function parse_metadata() {                
+            
+            function parse_metadata() {
                 facemetadata.forEach(function (item, index) {
                     framemetadata = item.metadata;
                     framemetadata.forEach(function (object, i) {
-                        if (meta_objects.some(mobj => object.name)) {
-                        } else {
-                            meta_objects.push([object.name, false]);
+                        var metaobj = {
+                            timestamp: object.timestamp,
+                            name: object.name,
+                            display: 2
+                        };
+                        let bfind = false;
+                        for (let j = 0; j < meta_objects.length && !bfind; j++) {
+                            if (meta_objects[j].name == object.name) {
+                                meta_objects[j].display = 2;
+                                bfind = true;
+                                break;
+                            }
                         }
-                    }); 
+                        if (!bfind) {
+                            meta_objects.push(metaobj);
+                        }
+                    });
                 });
+                  
+                appearobjs = [];
+                if (segmentationmetadata.length>0) {
+                    objests = segmentationmetadata[0].metadata.detected_objects;
 
-                // facemetadata = [];
+                    objests.forEach(function (object, i) {
+                        var metaobj = {
+                            Class: object.Class,
+                            Rect: object.Rect,
+                            name: object.Class,
+                            subid: 0,
+                        };
 
-                segmentationmetadata.forEach(function (item, index) {
-                    detected_objects = item.metadata;
-                    detected_instances.push([detected_objects, false]);
-                });
-                
-                //segmentationmetadata = [];
+                        result = objests.filter(obj => obj.Class == object.Class);
+                        //need to make name for object
+                        if(result.length > 1) {
+                            namecount = appearobjs.filter(obj => obj.Class == object.Class);                           
+                            metaobj.subid = namecount.length + 1;
+                        } 
+                        appearobjs.push(metaobj);
+                    });
+                }
+                if (appearobjs.length){
+                    objects_track.unshift(appearobjs);
+
+                    while(objects_track.length > 2) {
+                        objects_track.pop();
+                    }
+                }
             }
 
             function render_metapanel(metaobjects) {
                 let metapanel = document.getElementById('metadata_panel');
                 metapanel.innerHTML = '';
                 //console.log(meta_objects);
-                meta_objects.forEach(function (item, index) {
-                    //console.log(item);
-                    if (!item[1]) {
+                meta_objects.forEach(function (item, index) {                    
+                    item.display--;
+                    if (item.display > 0) {
                         var elm = '<button type="button" class="btn btn-danger btn-rounded m-b-5" ' +
-                        'onclick="click_action(\'' + item[0] + '\')">'+ item[0] + '</button>';
+                        'onclick="click_action(\'' + item.name + '\')">'+ item.name + '</button>';
                         $(elm).appendTo(metapanel);
-                        item[1] = true;
+                    } else { //delete button
+
                     }
                 });
                 meta_objects = [];
 
-                detected_instances.forEach(function (item, index) {
-                    if (!item[1]) {
-                        let detected_objects = item[0].detected_objects;
+                detected_objects = objects_track.length > 0 ? objects_track[0] : [];
 
-                        detected_objects.forEach(function (item, index){
-                            var elm = '<button type="button" class="btn btn-danger btn-rounded m-b-5" ' +
-                                        'onclick="click_action(\'' + item.Class + '\')">'+ item.Class + '</button>';
-                            $(elm).appendTo(metapanel);
-                        });
-                        item[1] = true;
-                        
+                detected_objects.forEach(function (item, index){
+                    let name = item.Class;
+                    if (item.subid) {
+                        name += item.subid.toString();
                     }
+                    var elm = '<button type="button" class="btn btn-danger btn-rounded m-b-5" ' +
+                                'onclick="click_action(\'' + name + '\')">'+ name + '</button>';
+                    $(elm).appendTo(metapanel);
                 });
-
-                detected_instances = [];
             }
 
 

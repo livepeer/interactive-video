@@ -8,7 +8,7 @@
         </a>
     </div>
     <!-- / brand -->
-            <!-- Navbar Start -->
+    <!-- Navbar Start -->
     <nav class="navigation">
         <ul class="list-unstyled">
             <li class="has-submenu"><a href="#"><i class="ion-home"></i> <span class="nav-label">Dashboard</span></a>
@@ -19,6 +19,11 @@
             <li class="has-submenu"><a href="#"><i class="fa fa-money"></i> <span class="nav-label">Analytics</span></a>
                 <ul class="list-unstyled">
                     <li><a href="">Analytics</a></li>
+                </ul>
+            </li>
+            <li class="has-submenu"><a href="#"><i class="fa fa-money"></i> <span class="nav-label">Face List</span></a>
+                <ul class="list-unstyled">
+                    <li><a href="{% url 'moderator_dashboard:facelist' %}">Face List</a></li>
                 </ul>
             </li>
         </ul>

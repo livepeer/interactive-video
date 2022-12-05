@@ -787,7 +787,6 @@ p.prototype.build = function (MistVideo,callback) {
                 // console.log(msg.metadata);
                 break;
               }
-
               var track = msg.track;
               if (track == "face-recognition") {                    // object detection/face recognition track
                 var maskdata = {
@@ -795,7 +794,7 @@ p.prototype.build = function (MistVideo,callback) {
                   metadata: metadata
                 };
                 
-                if (facemetadata.length < 300) {     // we just want to cache the most recent 10 mask data, .todo define this hardcoded constant to somewhere...
+                if (facemetadata.length < 5) {     // we just want to cache the most recent 10 mask data, .todo define this hardcoded constant to somewhere...
                   facemetadata.unshift(maskdata);
                 } else {
                   facemetadata.pop();
@@ -808,13 +807,22 @@ p.prototype.build = function (MistVideo,callback) {
                   timestamp: timestamp,
                   metadata: JSON.parse(msg.metadata)
                 };
-                if (segmentationmetadata.length < 10) {     // we just want to cache the most recent 10 mask data, .todo define this hardcoded constant to somewhere...
+              
+                if (segmentationmetadata.length < 5) {     // we just want to cache the most recent 10 mask data, .todo define this hardcoded constant to somewhere...
                   segmentationmetadata.unshift(maskdata);
                 } else {
                   segmentationmetadata.pop();
                   segmentationmetadata.unshift(maskdata);
                 }
               }
+              //filter 3 seconds before faces              
+              for (let i = facemetadata.length-1; i>=0; i--) {
+                maskdata = facemetadata[i];
+                if(maskdata?.timestamp < (timestamp - 2500)) {                  
+                  facemetadata.splice(i, 1);
+                }
+              }
+
               break;
             }
           }
