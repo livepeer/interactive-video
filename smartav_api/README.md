@@ -16,7 +16,7 @@
 5. ```pip install -r requirements.txt```
   Please pay attention to the version of onnxruntime-gpu. Please install suitable version of onnxruntime according to the versions of cuda and cudnn,you can find the table by the link: https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html. If you go through this guide, you can ignore this attention.
 6. ```pip install torch==1.9.0+cu102 torchvision==0.10.0+cu102 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html```
-7. ```git clone https://github.com/JamesWanglf/flask_server.git```
+
 ## Download models
 1. For face detection node, please download the model.
    ```
@@ -41,7 +41,20 @@
     cd checkpoints/
     gdown https://drive.google.com/uc?id=1JMmqsL7Nrq4B2WUXt6it3-c-4LnVOthz -O model_base.pth
     ```
-4. For instance-segmentation module, please download models.
+4. For generating-question module, please download word vectors.
+    ```
+    wget https://github.com/explosion/sense2vec/releases/download/v1.0.0/s2v_reddit_2015_md.tar.gz
+    tar -xvf  s2v_reddit_2015_md.tar.gz
+    ```
+    ```
+    python -m nltk.downloader universal_tagset
+    ```
+    ```
+    cd ~
+    gdown "1txK_dE7PkPNy6hBLGD6NppF93hty5QKE&confirm=t"
+    unzip nltk_data.zip
+    ```
+5. For instance-segmentation module, please download models.
     ```
     cd instance_segmentation/
     mkdir weights
@@ -158,9 +171,48 @@ Move to flask_server directory.
     ```
     curl --location --request POST 'http://0.0.0.0:5000/image-captioning'
     --header 'Content-Type: application/json'
-    --data-raw '[{
+    --data-raw '{
       "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....",
-    }]
+    }
+    ```
+### Generating Questions
+* /generate-questions  
+    ```
+    curl --location --request POST 'http://0.0.0.0:5000/image-captioning'
+    --header 'Content-Type: application/json'
+    --data-raw '[
+      "content": "xxx",
+      "max_questions": 3
+    }
+    ```
+    "max_questions" is the optional field. 4 as default.  
+    The response looks like:  
+    ```
+    {
+      "questions": [
+        {
+            "answer": "this is the correct answer",
+            "context": "the context that is used to generate this question",
+            "extra_options": [
+               "extra_answer_1",
+               "extra_answer_2",
+               ...
+               "extra_answer_n"
+            ],
+            "id": 1,
+            "options": [
+               "answer_1",
+               "answer_2",
+               "answer_3"
+            ],
+            "options_algorithm": "sense2vec",
+            "question_statement": "question",
+            "question_type": "MCQ"
+        }
+      ],
+      "statement": <this returns the "content" value in the request.>,
+      "time_taken": <time taken in api server>
+    }
     ```
 
 ### Instance Segmentation
