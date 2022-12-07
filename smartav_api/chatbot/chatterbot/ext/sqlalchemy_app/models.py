@@ -32,8 +32,8 @@ Base = declarative_base(cls=ModelBase)
 tag_association_table = Table(
     'tag_association',
     Base.metadata,
-    Column('tag_id', Integer, ForeignKey('tag.id')),
-    Column('statement_id', Integer, ForeignKey('statement.id'))
+    Column('tag_id', Integer, ForeignKey('tag.id', ondelete='CASCADE')),
+    Column('statement_id', Integer, ForeignKey('statement.id', ondelete='CASCADE'))
 )
 
 
@@ -41,7 +41,7 @@ class Tag(Base):
     """
     A tag that describes a statement.
     """
-
+    
     name = Column(
         String(constants.TAG_NAME_MAX_LENGTH),
         unique=True

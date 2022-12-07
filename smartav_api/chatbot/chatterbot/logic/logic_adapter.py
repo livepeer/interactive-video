@@ -22,7 +22,7 @@ class LogicAdapter(Adapter):
 
     :param response_selection_method:
           The a response selection method.
-          Defaults to ``get_first_response``
+          Defaults to ``get_random_multiple_responses``
     :type response_selection_method: collections.abc.Callable
 
     :param default_response:
@@ -33,7 +33,7 @@ class LogicAdapter(Adapter):
 
     def __init__(self, chatbot, **kwargs):
         super().__init__(chatbot, **kwargs)
-        from chatbot.chatterbot.response_selection import get_first_response
+        from chatbot.chatterbot.response_selection import get_random_multiple_responses
 
         self.search_algorithm_name = kwargs.get(
             'search_algorithm_name',
@@ -48,10 +48,10 @@ class LogicAdapter(Adapter):
             'maximum_similarity_threshold', 0.95
         )
 
-        # By default, select the first available response
+        # By default, select multiple available responses
         self.select_response = kwargs.get(
             'response_selection_method',
-            get_first_response
+            get_random_multiple_responses
         )
 
         default_responses = kwargs.get('default_response', [])

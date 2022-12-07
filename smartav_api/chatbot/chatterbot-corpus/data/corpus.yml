@@ -1,15 +1,466 @@
 categories:
 - corpus
 conversations:
-- text: I am playing a guitar. 
-  question: What kind of music do you like?
-  options:  
-    - I like jazz.
-    - I like rock.
-    - I like classic.
-- text: I am playing soccer.
+- text: playing soccer.
   question: Which is your favorite soccer club?
   options:  
     - Real Madrid
     - Barcelona
     - Liverpool
+- text: playing soccer.
+  question: What is the record for red cards given in a single soccer game?
+  options:  
+    - 36
+    - 12
+    - 6
+    - 24
+- text: playing soccer.
+  question: Which two countries participated in the first international soccer match?
+  options:  
+    - Germany & France
+    - Scotland & England
+    - Germany & Scotland
+    - France & England
+- text: playing soccer.
+  question: What was the largest margin of victory in an international soccer match?
+  options:  
+    - 17 points
+    - 31 points
+    - 11 points
+    - 21 points
+- text: playing soccer.
+  question: Who was the first player to score at five World Cup editions?
+  options:  
+    - MARTA
+    - LOTHAR MATTHÄUS
+    - PELÉ
+    - RONALDO
+- text: playing soccer.
+  question: What is a soccer field called?
+  options:  
+    - Paddock
+    - Box
+    - Pitch
+    - Court
+- text: playing soccer.
+  question: What was the fastest goal in World Cup history?
+  options:  
+    - 14.7 seconds
+    - 10.8 seconds
+    - 18.3 seconds
+    - 6.2 seconds
+- text: playing soccer.
+  question: Brazilian soccer legend Pelé played his last game for which team?
+  options:  
+    - NEW YORK COSMOS
+    - NEITHER SANTOS NOR NEW YORK COSMOS
+    - BOTH SANTOS & NEW YORK COSMOS
+    - SANTOS
+- text: playing soccer.
+  question: Which country won the first women's World Cup?
+  options:  
+    - UNITED STATES
+    - NEITHER SANTOS NOR NEW YORK COSMOS
+    - BOTH SANTOS & NEW YORK COSMOS
+    - SANTOS
+- text: playing soccer.
+  question: In soccer, the game clock ticks even when the ball is out of play, during substitutions, and during free kicks.
+  options:  
+    - True
+    - False
+- text: playing soccer.
+  question: If the ball rolls out of bounds on the sideline in soccer, what is the result?
+  options:  
+    - Free Kick
+    - Goal kick
+    - Throw-in
+    - Corner kick
+- text: playing soccer.
+  question: In soccer, who is the only player that is allowed to use their hands in the field of play?
+  options:  
+    - Forward
+    - Defender
+    - Goalie
+    - Midfielder
+- text: playing soccer.
+  question: How many players are on the field for one team?
+  options:  
+    - 10
+    - 11
+    - 12
+    - 9
+- text: playing soccer.
+  question: What happens when the ball goes over the side lines?
+  options:  
+    - Throw In
+    - Corner Kick
+    - Goal Kick
+    - Drop Ball
+- text: playing soccer.
+  question: The basic skill of advancing and controlling the ball close to your feet while running.
+  options:  
+    - Direct Free Kick
+    - Pass
+    - Dribbling
+    - All of the above
+- text: playing soccer.
+  question: Offensive players are not considered to be in the arc if a player's foot just touches the line of the arc while in control of the ball.
+  options:  
+    - True
+    - False
+- text: playing soccer.
+  question: Which of the following is NOT considered a foul in soccer?
+  options:  
+    - Tripping
+    - High Kicking
+    - Hand Ball
+    - Charging the goal keeper
+    - None of the above
+- text: playing soccer.
+  question: How is a game of soccer started?
+  options:  
+    - Penalty Kick
+    - Goal
+    - Kick-off
+    - Throw-In
+- text: playing soccer.
+  question: When the ball goes out of bounds over the sideline what do you do to bring the ball back into play?
+  options:  
+    - Kick-Off
+    - Throw-In
+    - Corner kick
+    - Goal
+- text: playing soccer.
+  question: Because soccer is often played between players and fans who may not speak each others language, these are often used for fouls.
+  options:  
+    - Penalties
+    - Goal Kicks
+    - Goals
+    - Cards
+- text: playing soccer.
+  question: What statement describes a proper throw-in?
+  options:  
+    - You must throw underhand using both hands, feet don't matter
+    - Both hands must be on the ball behind the head, both feet on ground
+    - You can throw with one hand, but both feet must be on ground
+    - Both hands must be on the ball, you can jump or stand while throwing
+- text: playing soccer.
+  question: As a general rule, where should you pass the soccer ball in relation to your teammate?
+  options:  
+    - At their midsection
+    - Behind them
+    - In front of them
+    - Anywhere
+- text: playing soccer.
+  question: What ethnicities are responsible for introducing the sport of soccer into the United States?
+  options:  
+    - Germans
+    - Irish
+    - Scottish
+    - All of the above
+- text: playing soccer.
+  question: In which United States city were the first organized games of soccer believed to have been played?
+  options:  
+    - New Orleans
+    - New York City
+    - Boston
+    - Philadelphia
+- text: playing soccer.
+  question: Who are the only two players in the box during a penalty kick?
+  options:  
+    - the midfielder and forward
+    - the striker and forward
+    - the midfielder and defender
+    - the penalty taker and the defending team's goalkeeper
+- text: playing soccer.
+  question: This sport was played during what original American holiday?
+  options:  
+    - Thanksgiving
+    - Christmas
+    - Independence Day
+    - New Year's
+- text: playing soccer.
+  question: In what country did modern soccer originate?
+  options:  
+    - China
+    - Mexico
+    - England
+    - United States
+- text: playing soccer.
+  question: How long is the break between halves in soccer?
+  options:  
+    - 5 minutes
+    - 10 minutes
+    - 15 minutes
+    - 20 minutes
+- text: playing soccer.
+  question: What must a player wear when playing soccer?
+  options:  
+    - shirt or jersey
+    - footwear and shin pads
+    - shorts and socks
+    - all of the above
+- text: playing soccer.
+  question: Who determines which team gets the ball after it goes out of bounds?
+  options:  
+    - The opposite team who kicked the ball
+    - Referee
+    - Coaches
+    - Team who kicked the ball out
+- text: playing soccer.
+  question: What are the boxes surrounding the goal called?
+  options:  
+    - Side Line
+    - Penalty Box
+    - Half Line
+    - Goal Box
+- text: playing soccer.
+  question: How wide is an official soccer field?
+  options:  
+    - 50 to 70 yards
+    - 60 to 80 yards
+    - 70 to 100 yards
+    - 50 to 100 yards
+- text: playing soccer.
+  question: How wide is an official soccer field?
+  options:  
+    - 50 to 70 yards
+    - 60 to 80 yards
+    - 70 to 100 yards
+    - 50 to 100 yards
+- text: playing a guitar. 
+  question: What kind of music do you like?
+  options:  
+    - I like jazz.
+    - I like rock.
+    - I like classic.
+- text: playing a guitar. 
+  question: What is the tempo?
+  options:  
+    - Making up a solo as you go
+    - Speed of the music
+    - An interval of 12 semitones
+    - Three note chord
+- text: playing a guitar. 
+  question: Which one of these chords is a barre chord?
+  options:  
+    - D
+    - C
+    - G
+    - F
+- text: playing a guitar. 
+  question: Which type of socket can you find on an electric guitar?
+  options:  
+    - Bob
+    - Jack
+    - Richard
+    - Ed
+- text: playing a guitar. 
+  question: What is the other name given to classical guitar?
+  options:  
+    - French Guitar
+    - Italian Guitar
+    - Spanish Guitar
+    - English Guitar
+- text: playing a guitar. 
+  question: When were the first electric guitars made?
+  options:  
+    - In the 30s
+    - In the 40s
+    - In the 50s
+    - In the 60s
+- text: playing a guitar. 
+  question: Which US city gave its name to a number system used to play guitar?
+  options:  
+    - Austin
+    - Memphis
+    - New York
+    - Nashville
+- text: playing a guitar. 
+  question: Name the orchestral instrument that can play high note?
+  options:  
+    - Viola
+    - Piccolo
+    - Violin
+    - Cellos
+- text: playing a guitar. 
+  question: Name the all-time bestselling movie soundtrack? 
+  options:  
+    - I have nothing
+    - My love is your love
+    - Waiting to exhale
+    - The Bodyguard- Original Soundtrack Album
+- text: playing a guitar. 
+  question: What does a spectrum mean?
+  options:  
+    - Stick
+    - Guitar pick
+    - Showel
+    - Matchstick
+- text: playing a guitar. 
+  question: The number of strings on a Ukulele is?
+  options:  
+    - 3
+    - 6
+    - 4
+    - 8
+- text: playing a guitar. 
+  question: The guitarist known as Slowhand is?
+  options:  
+    - Jimmy Page
+    - Eric Clapton
+    - Jeff Beck
+    - B.B King
+- text: playing a guitar. 
+  question: The guitarist known as Slowhand is?
+  options:  
+    - Jimmy Page
+    - Eric Clapton
+    - Jeff Beck
+    - B.B King
+- text: music instruments
+  question: Which of the following instruments uses a reed?
+  options:
+    - flute
+    - clarinet
+    - tuba
+    - violin
+- text: music instruments
+  question: Which of the following instruments uses a mouthpiece?
+  options:
+    - violin
+    - flute
+    - string bass
+    - trumpet
+- text: music instruments
+  question: How do string instruments make sound?
+  options:
+    - the strings vibrate making sound
+    - you plug them in
+    - one or 2 reeds vibrate to make sound
+    - you buzz on a mouthpiece to play them
+- text: music instruments
+  question: How does the air vibrate in a brass instrument?
+  options:
+    - blowing into the instrument
+    - the keys will make the air vibrate
+    - your lips must vibrate as you use air
+    - the reed vibrates as you use air
+- text: music instruments
+  question: Which instrument is a member of the String family?
+  options:
+    - Tuba
+    - Violin
+    - Timpani
+    - Cymbals
+- text: music instruments
+  question: A cello belongs to which family of instruments?
+  options:
+    - Strings
+    - Woodwind
+    - Brass
+    - Percussion
+- text: music instruments
+  question: A trombone belongs to which family of instruments?
+  options:
+    - Brass
+    - Strings
+    - Percussion
+    - Woodwind
+- text: music instruments
+  question: How many instrument families are there?
+  options:
+    - 6
+    - 3
+    - 18
+    - 2
+- text: music instruments
+  question: Which musical instrument descended from a hunting horn?
+  options:
+    - A french horn
+    - A trombone
+    - A saxophone
+- text: concert band music
+  question: Which of these do not belong in the brass section?
+  options:
+    - Tubas
+    - Saxophones
+    - Trombones
+    - Cornets
+- text: concert band music
+  question: Which of these positions are usually not found in a concert band?
+  options:
+    - Librarian
+    - Conductor
+    - Concert Master
+    - Drum Major
+- text: concert band music
+  question: What type(s) of music do concert bands play?
+  options:
+    - Pop
+    - Classical
+    - Jazz
+    - All of the above
+- text: concert band music
+  question: Which section do the cymbals fall under?
+  options:
+    - Brass
+    - Percussion
+    - Woodwinds
+    - None of the above
+- text: concert band music
+  question: Which of these characteristics best describe the bassoon?
+  options:
+    - Double-reed
+    - Produces a high pitch
+    - Belongs to the brass family
+    - None of the above
+- text: concert band music
+  question: Which of these is NOT a percussion mallet instrument?
+  options:
+    - Marimba
+    - Chimes
+    - Glockenspiel
+    - None of the above
+- text: concert band music
+  question: What do the valves of a trumpet do?
+  options:
+    - They allow the pitch of the sound produced to be higher
+    - They allow the pitch of the sound produced to be lower
+    - They mute the trumpet
+    - There are no valves
+- text: concert band music
+  question: What do percussion auxiliaries (e.g. triangle, cymbal) do?
+  options:
+    - Maintain the balance for the band
+    - Help the band keep time
+    - Add color and sound effects
+    - Play the melody
+- text: concert band music
+  question: Which type of saxophones produce the highest pitch?
+  options:
+    - Soprano
+    - Tenor
+    - Alto
+    - Baritone
+- text: concert band music
+  question: Which is the second highest sounding member of the brass family?
+  options:
+    - Horns
+    - Trumpets
+    - Euphoniums
+    - Trombones
+- text: concert band music
+  question: How is the pitch of the trombone changed?
+  options:
+    - By pressing the valves
+    - By moving the slide
+    - By placing your hand in the bell
+    - The pitch cannot be changed
+- text: concert band music
+  question: Which of the following drums have a definite pitch?
+  options:
+    - Snare drum
+    - Bass drum
+    - Timpani
+    - Toms
