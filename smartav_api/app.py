@@ -7,10 +7,13 @@ from face_recognition.face_detection.common import set_env
 from image_captioning import image_captioning
 from instance_segmentation.segment import predict as instance_segmentation_predict
 from chatbot import main as chatbot_main
+from questgen import main
 
 
 app = Flask(__name__)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+QGenerator = main.QGen()
 
 Models = {
     'image_captioning_model': None,
@@ -247,6 +250,37 @@ def image_captioning_method():
         'options': chatbot_options
     }
     return make_response(jsonify(response), 200)
+
+
+
+@app.route('/generate-questions', methods=['POST'])
+def generate_questions():
+    global QGenerator
+
+    # Load speech content
+    data = request.json
+    if 'content' not in data:
+        response = {
+            'error': ERR_MESSAGES[INVALID_REQUEST_ERR]
+        }
+        return make_response(jsonify(response), 400)
+    
+    max_questions = 4
+    if 'max_questions' in data:
+        max_questions = int(data['max_questions'])
+
+    content = data['content']
+
+    payload = {
+        'input_text': content,
+        'max_questions': max_questions
+    }
+    output = QGenerator.predict_mcq(payload)
+
+    response = []
+
+    return make_response(jsonify(output), 200)
+
 
 
 @app.route('/instance-segmentation/load-model', methods=['POST'])

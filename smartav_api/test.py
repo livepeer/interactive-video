@@ -128,6 +128,19 @@ def image_captioning_test():
     print(response.text)
 
 
+def test_generate_questions():
+    url = f'{hostname}/generate-questions'
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    payload = {
+        'content': 'Sachin Ramesh Tendulkar is a former international cricketer from India and a former captain of the Indian national team. He is widely regarded as one of the greatest batsmen in the history of cricket. He is the highest run scorer of all time in International cricket.',
+        'max_questions': 5
+    }
+    response = requests.post(url, headers=headers, data=json.dumps(payload))
+    print(response.status_code, response.text)
+
+
 def instance_segmentation_load_model_test():
     url = f'{hostname}/instance-segmentation/load-model'
 
@@ -181,6 +194,9 @@ if __name__ == '__main__':
     # # Update sample metadata
     # update_sample_metadata('unknown_person_1')
 
+    # # Test question generator
+    test_generate_questions()
+
     # for i in range(0, 10000):
         # # # Test face recognition with "img1.jpg"
         # face_recognition_test(1)
@@ -189,7 +205,7 @@ if __name__ == '__main__':
         # image_captioning_test()
 
         # # Test instance segmentation init engine
-        instance_segmentation_load_model_test()
+        # instance_segmentation_load_model_test()
 
         # # Test instance segmentation detect objects
-        instance_segmentation_detect_objects_test()
+        # instance_segmentation_detect_objects_test()
