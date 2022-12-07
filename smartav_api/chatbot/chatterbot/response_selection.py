@@ -84,3 +84,30 @@ def get_random_response(input_statement, response_list, storage=None):
         len(response_list)
     ))
     return choice(response_list)
+
+
+def get_random_multiple_responses(input_statement, response_list, storage=None, sample_size=3):
+    """
+    :param input_statement: A statement, that closely matches an input to the chat bot.
+    :type input_statement: Statement
+
+    :param response_list: A list of statement options to choose a response from.
+    :type response_list: list
+
+    :param storage: An instance of a storage adapter to allow the response selection
+                    method to access other statements if needed.
+    :type storage: StorageAdapter
+
+    :return: Choose multiple random responses from the selection.
+    :rtype: list of Statement
+    """
+    from random import sample
+    logger = logging.getLogger(__name__)
+    logger.info('Selecting a response from list of {} options.'.format(
+        len(response_list)
+    ))
+    if sample_size > len(response_list):
+        sample_size = len(response_list)
+
+    sample_choices = sample(response_list, sample_size)
+    return sample_choices

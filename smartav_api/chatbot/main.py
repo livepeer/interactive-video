@@ -31,26 +31,34 @@ def create_chatbot():
     return True
     
 
-def run_chatterbot(input_text):
+def run_chatterbot(input_text, candidate_size):
     global chatbot
 
     if chatbot is None:
         create_chatbot()
 
-    res = chatbot.get_response(input_text)
-    text = res.text
-    options = json.loads(res.options)
+    res = chatbot.get_response(input_text, candidate_size)  # multiple question candidates
 
     print('\n====================')
     print(f'Input: {input_text}')
     print('--------------------')
-    print(text)
 
-    print('\nOptions: ')
+    print('\nQuestions: ')
 
-    for i in range(0, len(options)):
-        print(f'{i+1}. {options[i]}')
+    for i in range(0, len(res['candidates'])):
+        print(f'{i+1}. {res["candidates"][i]}')
 
     print('====================\n\n')
 
-    return text, options
+    return res
+
+
+def get_quiz(quiz_id):
+    global chatbot
+
+    if chatbot is None:
+        create_chatbot()
+
+    quiz = chatbot.get_quiz_answers(quiz_id)
+
+    return quiz

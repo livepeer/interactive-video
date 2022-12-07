@@ -109,7 +109,7 @@ def face_recognition_test(number):
 
 def image_captioning_test():
     dir_path = os.path.join(os.path.dirname(__file__), 'image_captioning', 'images')
-    file_path = os.path.join(dir_path, f'test_image_1.png')
+    file_path = os.path.join(dir_path, f'test_image_6.jpg')
     with open(file_path, 'rb') as img_file:
         base64_img = base64.b64encode(img_file.read()).decode('utf-8')
 
@@ -195,14 +195,14 @@ if __name__ == '__main__':
     # update_sample_metadata('unknown_person_1')
 
     # # Test question generator
-    test_generate_questions()
+    # test_generate_questions()
 
     # for i in range(0, 10000):
         # # # Test face recognition with "img1.jpg"
         # face_recognition_test(1)
 
         # # Test image captioning with "test_image_1.png"
-        # image_captioning_test()
+    image_captioning_test()
 
         # # Test instance segmentation init engine
         # instance_segmentation_load_model_test()

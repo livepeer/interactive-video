@@ -56,7 +56,7 @@ class ChatBot(object):
         # Allow the bot to save input it receives so that it can learn
         self.read_only = kwargs.get('read_only', False)
 
-    def get_response(self, statement=None, **kwargs):
+    def get_response(self, statement=None, candidate_size=3, **kwargs):
         """
         Return the bot's response based on the input.
 
@@ -113,18 +113,18 @@ class ChatBot(object):
         if not input_statement.search_in_response_to and input_statement.in_response_to:
             input_statement.search_in_response_to = self.storage.tagger.get_text_index_string(input_statement.in_response_to)
 
-        response = self.generate_response(input_statement, additional_response_selection_parameters)
+        response = self.generate_response(input_statement, candidate_size, additional_response_selection_parameters)
 
-        # Update any response data that needs to be changed
-        if persist_values_to_response:
-            for response_key in persist_values_to_response:
-                response_value = persist_values_to_response[response_key]
-                if response_key == 'tags':
-                    input_statement.add_tags(*response_value)
-                    response.add_tags(*response_value)
-                else:
-                    setattr(input_statement, response_key, response_value)
-                    setattr(response, response_key, response_value)
+        # # Update any response data that needs to be changed
+        # if persist_values_to_response:
+        #     for response_key in persist_values_to_response:
+        #         response_value = persist_values_to_response[response_key]
+        #         if response_key == 'tags':
+        #             input_statement.add_tags(*response_value)
+        #             response.add_tags(*response_value)
+        #         else:
+        #             setattr(input_statement, response_key, response_value)
+        #             setattr(response, response_key, response_value)
 
         # if not self.read_only:
         #     self.learn_response(input_statement)
@@ -134,14 +134,12 @@ class ChatBot(object):
 
         return response
 
-    def generate_response(self, input_statement, additional_response_selection_parameters=None):
+    def generate_response(self, input_statement, candidate_size, additional_response_selection_parameters=None):
         """
         Return a response based on a given input statement.
 
         :param input_statement: The input statement to be processed.
         """
-        Statement = self.storage.get_object('statement')
-
         results = []
         result = None
         max_confidence = -1
@@ -149,18 +147,18 @@ class ChatBot(object):
         for adapter in self.logic_adapters:
             if adapter.can_process(input_statement):
 
-                output = adapter.process(input_statement, additional_response_selection_parameters)
+                output = adapter.process(input_statement, candidate_size, additional_response_selection_parameters)
                 results.append(output)
 
                 self.logger.info(
                     '{} selected "{}" as a response with a confidence of {}'.format(
-                        adapter.class_name, output.text, output.confidence
+                        adapter.class_name, output['text'], output['confidence']
                     )
                 )
 
-                if output.confidence > max_confidence:
+                if output['confidence'] > max_confidence:
                     result = output
-                    max_confidence = output.confidence
+                    max_confidence = output['confidence']
             else:
                 self.logger.info(
                     'Not processing the statement using {}'.format(adapter.class_name)
@@ -173,38 +171,31 @@ class ChatBot(object):
 
         # If multiple adapters agree on the same statement,
         # then that statement is more likely to be the correct response
-        if len(results) >= 3:
-            result_options = {}
-            for result_option in results:
-                result_string = result_option.text + ':' + (result_option.in_response_to or '')
+        if False:   # James disabled
+            if len(results) >= 3:
+                result_options = {}
+                for result_option in results:
+                    result_string = result_option.text + ':' + (result_option.in_response_to or '')
 
-                if result_string in result_options:
-                    result_options[result_string].count += 1
-                    if result_options[result_string].statement.confidence < result_option.confidence:
-                        result_options[result_string].statement = result_option
-                else:
-                    result_options[result_string] = ResultOption(
-                        result_option
-                    )
+                    if result_string in result_options:
+                        result_options[result_string].count += 1
+                        if result_options[result_string].statement.confidence < result_option.confidence:
+                            result_options[result_string].statement = result_option
+                    else:
+                        result_options[result_string] = ResultOption(
+                            result_option
+                        )
 
-            most_common = list(result_options.values())[0]
+                most_common = list(result_options.values())[0]
 
-            for result_option in result_options.values():
-                if result_option.count > most_common.count:
-                    most_common = result_option
+                for result_option in result_options.values():
+                    if result_option.count > most_common.count:
+                        most_common = result_option
 
-            if most_common.count > 1:
-                result = most_common.statement
+                if most_common.count > 1:
+                    result = most_common.statement
 
-        response = Statement(
-            text=result.text,
-            in_response_to=input_statement.text,
-            conversation=input_statement.conversation,
-            persona='bot:' + self.name,
-            options=result.options
-        )
-
-        response.confidence = result.confidence
+        response = result
 
         return response
 
@@ -271,6 +262,16 @@ class ChatBot(object):
                 return latest_statement
 
         return None
+
+    def get_quiz_answers(self, quiz_id):
+        storage_adapter = self.storage
+        Statement = storage_adapter.get_model('statement')
+        session = storage_adapter.Session()
+        query = session.query(Statement).filter_by(id=quiz_id)
+        record = query.first()
+        session.close()
+
+        return record
 
     class ChatBotException(Exception):
         pass

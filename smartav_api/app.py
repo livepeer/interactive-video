@@ -1,3 +1,4 @@
+import json
 import torch
 from datetime import datetime
 from dotenv import load_dotenv
@@ -227,6 +228,10 @@ def image_captioning_method():
         }
         return make_response(jsonify(response), 400)
 
+    candidate_size = 3
+    if 'candidate_size' in img_data:
+        candidate_size = img_data['candidate_size']
+
     if not face_detection_main.set_db_engine():
         response = {
             'error': 'DB connection error occurred'
@@ -241,16 +246,15 @@ def image_captioning_method():
     caption = image_captioning.process_image(Models['image_captioning_model'], img_data['image'])
 
     # Chatterbot
-    chatbot_question, chatbot_options = chatbot_main.run_chatterbot(caption)
+    chatbot_result = chatbot_main.run_chatterbot(caption, candidate_size)
 
     # Return candidates
     response = {
         'caption': caption,
-        'question': chatbot_question,
-        'options': chatbot_options
+        'text': chatbot_result['text'],
+        'questions': [{'id': quiz.id, 'question': quiz.text, 'options': json.loads(quiz.options)} for quiz in chatbot_result['candidates']]
     }
     return make_response(jsonify(response), 200)
-
 
 
 @app.route('/generate-questions', methods=['POST'])
@@ -280,7 +284,6 @@ def generate_questions():
     response = []
 
     return make_response(jsonify(output), 200)
-
 
 
 @app.route('/instance-segmentation/load-model', methods=['POST'])
