@@ -146,8 +146,11 @@ image_captioning/checkpoints/
 instance_segmentation/weights/
 results/
 *.pt
+s2v_old/
+._s2v_old
 
 # test data
+.vscode/
 face_recognition/images/*
 face_recognition/feature_extraction/models/*
 instance_segmentation/inputs/*
