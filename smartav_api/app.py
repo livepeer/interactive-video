@@ -281,8 +281,6 @@ def generate_questions():
     }
     output = QGenerator.predict_mcq(payload)
 
-    response = []
-
     return make_response(jsonify(output), 200)
 
 
