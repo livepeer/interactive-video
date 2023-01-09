@@ -63,8 +63,12 @@ def update_hls_transcript(
         "c": "copy",
     }
     ffmpeg.input(input).output("whisperme.mp4", **args_out).run()
-    print("whisper is subscribing mp4")
+    
+    print("whisper is transcribing mp4")
+    # transcribe input audio
     srtFilename = transcribe_audio("whisperme.mp4")
+    
+    
     input_url_split = input.split("/")
     # vtt = webvtt.from_srt(srtFilename)
     # vtt.save()
@@ -73,6 +77,7 @@ def update_hls_transcript(
     
     
     # webvtt.segment("whisperme.vtt", "/var/www/html/subs/" + subtitle_path)
+    # Create a new master playlist with updated variants and subtitles manifest
     res = requests.get(input)
     pl = res.text
     input_pl = m3u8.loads(pl)
@@ -81,9 +86,11 @@ def update_hls_transcript(
         for pl in input_pl.playlists:
             pl.uri = input_url_prefix + "/" + pl.uri
             pl.stream_info.subtitles = 'subs0'
-
+    
+    # create vtt files from srt file
     generate_hls("whisperme.mp4", "whisperme.srt", f"/var/www/html/subs/{subtitle_path}")
 
+    # add subtitles manifest to master playlist
     master_pl = "/var/www/html/hls/" + subtitle_path + "/index.m3u8"
     input_pl.dump(master_pl)
 
