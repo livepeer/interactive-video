@@ -12,6 +12,7 @@
 4. ```pip install -r requirements.txt```
 
 ## Run
+### VOD HLS Subtitles
 ```
 python vod_subtitles.py -i <input>
 # e.g, python vod_subtitles.py -i https://lp-playback.com/hls/ef3611aj4f0v1h7h/index.m3u8
@@ -19,6 +20,10 @@ python vod_subtitles.py -i <input>
 Sample output:
 ```
 Subtitled version available at https://wg.livepeer.com/hls/ef3611aj4f0v1h7h/index.m3u8
+```
+### Audio/Video to SRT
+```
+python audio2srt.py -f filename
 ```
 
 ## Workflow
