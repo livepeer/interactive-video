@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import requests
+import time
 from datetime import datetime
 
 hostname = 'http://localhost:5000'
@@ -128,6 +129,68 @@ def image_captioning_test():
     print(response.text)
 
 
+def init_story_generator_test():
+    url = f'{hostname}/init-story-generator'
+
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    prompt = input('> Initialize the Story: ')
+    payloads = {
+        'prompt': prompt
+    }
+
+    res = requests.post(url, headers=headers, data=json.dumps(payloads))
+
+    print(res.json())
+
+
+def story_generator_test():
+    dir_path = os.path.join(os.path.dirname(__file__), 'image_captioning', 'images')
+
+    url = f'{hostname}/image-captioning'
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    for i in range(100):
+        filename = f'test_image_{i % 6 + 1}.jpg'
+        file_path = os.path.join(dir_path, filename)
+
+        with open(file_path, 'rb') as img_file:
+            base64_img = base64.b64encode(img_file.read()).decode('utf-8')
+
+            img_data = {
+                'image': f'data:image/jpeg;base64,{base64_img}',
+            }
+
+        payload = json.dumps(img_data)
+
+        response = requests.post(url, headers=headers, data=payload)
+
+        print(response.text)
+
+        time.sleep(20)
+
+
+def test_add_text_to_story():
+    url = f'{hostname}/add-text-to-story'
+
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    text = input('> Input the text that should be added to story: ')
+    payloads = {
+        'text': text
+    }
+
+    res = requests.post(url, headers=headers, data=json.dumps(payloads))
+
+    print(res.json())
+
+
 def test_generate_questions():
     url = f'{hostname}/generate-questions'
     headers = {
@@ -201,11 +264,17 @@ if __name__ == '__main__':
         # # # Test face recognition with "img1.jpg"
         # face_recognition_test(1)
 
-        # # Test image captioning with "test_image_1.png"
-    image_captioning_test()
+        # # Test image captioning with "test_image_1.jpg"
+        # image_captioning_test()
 
         # # Test instance segmentation init engine
         # instance_segmentation_load_model_test()
 
         # # Test instance segmentation detect objects
         # instance_segmentation_detect_objects_test()
+
+    init_story_generator_test()
+    
+    # story_generator_test()
+
+    # test_add_text_to_story()

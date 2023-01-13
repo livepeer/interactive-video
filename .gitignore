@@ -15,7 +15,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-
 # Distribution / packaging
 .Python
 build/
@@ -154,3 +153,9 @@ s2v_old/
 face_recognition/images/*
 face_recognition/feature_extraction/models/*
 instance_segmentation/inputs/*
+
+# Story Generator
+smartav_api/story_generator/AI-Adventure-2bb65e3a4e2f.json
+smartav_api/story_generator/data/text_adventures.txt
+smartav_api/story_generator/generator/gpt2/models/*
+smartav_api/story_generator/saved_stories/
