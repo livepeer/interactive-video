@@ -1,0 +1,10 @@
+google-cloud-storage
+gsutil
+numpy
+profanityfilter
+pyyaml
+regex
+tensorflow==1.15.2
+tracery
+Flask==2.1.1
+Flask-Script==2.0.6
