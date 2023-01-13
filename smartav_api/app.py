@@ -225,6 +225,51 @@ def face_recognition():
     # Return candidates
     return make_response(jsonify(candidates), 200)
 
+# Begin Story Generator API
+@app.route('/set-story-gen-api-host', methods=['POST'])
+def set_story_gen_api_host():
+    global STORY_GENERATOR_API_HOST
+
+    params = request.json
+    if 'hostname' not in params:
+        response = {
+            'error': ERR_MESSAGES[INVALID_REQUEST_ERR]
+        }
+        return make_response(jsonify(response), 400)
+
+    STORY_GENERATOR_API_HOST = params['hostname']
+
+    response = {
+        'result': 'success'
+    }
+    return make_response(jsonify(response), 200)
+
+
+@app.route('/set-story-gen-interval', methods=['POST'])
+def set_call_story_generator_interval():
+    global call_story_gen_interval
+
+    params = request.json
+    if 'interval' not in params:
+        response = {
+            'error': ERR_MESSAGES[INVALID_REQUEST_ERR]
+        }
+        return make_response(jsonify(response), 400)
+
+    try:
+        interval = int(params['interval'])
+        call_story_gen_interval = interval
+    except Exception:
+        response = {
+            'error': ERR_MESSAGES[INVALID_REQUEST_ERR]
+        }
+        return make_response(jsonify(response), 400)
+
+    response = {
+        'result': 'success'
+    }
+    return make_response(jsonify(response), 200)
+
 
 @app.route('/init-story-generator', methods=['POST'])
 def init_story_generator():
@@ -235,6 +280,16 @@ def init_story_generator():
     return redirect(url, code=307)
 
 
+@app.route('/get-generated-story', methods=['GET'])
+def get_generated_story():
+    global generated_stories
+    
+    response = {
+        'results': generated_stories
+    }
+    return make_response(jsonify(response), 200)
+
+
 @app.route('/add-text-to-story', methods=['POST'])
 def add_text_to_story():
     """
@@ -242,6 +297,7 @@ def add_text_to_story():
     """
     url = f'{STORY_GENERATOR_API_HOST}/add-text-to-story'
     return redirect(url, code=307)
+# End Story Generator API
 
 
 def call_story_generator():
@@ -315,42 +371,6 @@ def image_captioning_method():
         'questions': [{'id': quiz.id, 'question': quiz.text, 'options': json.loads(quiz.options)} for quiz in chatbot_result['candidates']]
     }
     
-    return make_response(jsonify(response), 200)
-
-
-@app.route('/set-story-gen-interval', methods=['POST'])
-def set_call_story_generator_interval():
-    global call_story_gen_interval
-
-    params = request.json
-    if 'interval' not in params:
-        response = {
-            'error': ERR_MESSAGES[INVALID_REQUEST_ERR]
-        }
-        return make_response(jsonify(response), 400)
-
-    try:
-        interval = int(params['interval'])
-        call_story_gen_interval = interval
-    except Exception:
-        response = {
-            'error': ERR_MESSAGES[INVALID_REQUEST_ERR]
-        }
-        return make_response(jsonify(response), 400)
-
-    response = {
-        'result': 'success'
-    }
-    return make_response(jsonify(response), 200)
-
-
-@app.route('/get-generated-story', methods=['GET'])
-def get_generated_story():
-    global generated_stories
-    
-    response = {
-        'results': generated_stories
-    }
     return make_response(jsonify(response), 200)
 
 
