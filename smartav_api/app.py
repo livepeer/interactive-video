@@ -247,7 +247,7 @@ def add_text_to_story():
 def call_story_generator():
     global generated_stories, story_generator_is_free
 
-    if len(last_image_captioning_list):
+    if len(last_image_captioning_list) == 0:
         return
 
     story_generator_is_free = False
@@ -301,6 +301,7 @@ def image_captioning_method():
     # Trigger Story Generator
     last_image_captioning_list.append(caption)
     if len(last_image_captioning_list) >= call_story_gen_interval and story_generator_is_free:
+        print('call story_generator', len(last_image_captioning_list))
         th = threading.Thread(target=call_story_generator)
         th.start()
 

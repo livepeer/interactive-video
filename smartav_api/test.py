@@ -273,8 +273,8 @@ if __name__ == '__main__':
         # # Test instance segmentation detect objects
         # instance_segmentation_detect_objects_test()
 
-    init_story_generator_test()
+    # init_story_generator_test()
     
-    # story_generator_test()
+    story_generator_test()
 
     # test_add_text_to_story()
