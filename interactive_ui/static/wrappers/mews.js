@@ -802,6 +802,7 @@ p.prototype.build = function (MistVideo,callback) {
                 }
               } else if (track == "image-caption") {
                 var metadata = JSON.parse(msg.metadata);
+                textmetadata = metadata;
               } else if (track == "instance-segmentation") {
                 var maskdata = {
                   timestamp: timestamp,
