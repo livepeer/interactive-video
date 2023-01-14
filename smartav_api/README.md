@@ -175,10 +175,160 @@ Move to flask_server directory.
       "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....",
     }
     ```
+
+### Story Generator
+[/set-story-gen-api-host](#set-story-gen-api-host)  
+[/init-story-generator](#init-story-generator)  
+[/set-story-gen-interval](#set-story-gen-interval)  
+[/get-generated-story](#get-generated-story)  
+[/add-text-to-story](#add-text-to-story)  
+
+
+#### <a name="set-story-gen-api-host"/>/set-story-gen-api-host  
+You should set the host url of the story generator node.
+
+sample request:
+
+```
+curl --location --request POST 'http://0.0.0.0:5000/set-story-gen-api-host'
+--header 'Content-Type: application/json'
+--data-raw '{
+    "hostname": "http://localhost:8000"
+}
+```
+
+sample response:
+```
+status_code: 200
+response content:
+{
+    "result": "success"
+}
+```
+
+error response:
+```
+status_code: 400
+response content:
+{
+    "error": "Invalid request."
+}
+```
+
+#### <a name="init-story-generator"/> /init-story-generator  
+You should initialize the story generator before you call the other endpoints related to story generator.
+
+sample request:
+```
+curl --location --request POST 'http://0.0.0.0:5000/init-story-generator'
+--header 'Content-Type: application/json'
+--data-raw '{
+    "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...."
+}
+```
+
+sample response:
+```
+status_code: 200
+response content: 
+{
+    "result": "Generated text ****"
+}
+```
+
+error response:
+```
+status_code: 400
+response content: 
+{
+    "error": "Invalid request. The request should contain \"prompt\"."
+}
+```
+
+#### <a name="set-story-gen-interval"/> /set-story-gen-interval  
+sample request:
+```
+curl --location --request POST 'http://0.0.0.0:5000/set-story-gen-interval'
+--header 'Content-Type: application/json'
+--data-raw '{
+    "interval": 3
+}
+```
+This means that it will generate the story every time when the `/image-captioning` endpoint has been called 3 times.
+
+sample response:
+```
+{
+    "result": "success"
+}
+```
+error response:
+```
+{
+    "error": "Invalid request."
+}
+```
+
+#### <a name="get-generated-story"/> /get-generated-story  
+
+This endpoint returns the 3 most recently created stories.
+
+sample request:
+```
+curl --location --request GET 'http://0.0.0.0:5000/get-generated-story'
+```
+
+sample response:
+```
+{
+    "results": ["text 1", "text 2", "text 3]
+}
+```
+
+#### <a name="add-text-to-story"/> /add-text-to-story  
+
+You can select one from the candidates and add it to the story.
+
+sample request:
+```
+curl --location --request POST 'http://{hostname}/add-text-to-story'
+--header 'Content-Type: application/json'
+--data-raw 
+'{
+    "text": "Your text is here."
+}'
+```
+
+sample response:
+```
+status_code: 200
+{
+    "result": "success"
+}
+```
+
+error response:
+```
+status_code: 400
+{
+    "error": "Invalid request. The request should contain \"text\"."
+}
+
+status_code: 500
+{
+    "error": "Please initialize the story generator first."
+}
+
+status_code: 500
+{
+    "result": "failure"
+}
+```
+
 ### Generating Questions
 * /generate-questions  
     ```
-    curl --location --request POST 'http://0.0.0.0:5000/image-captioning'
+    curl --location --request POST 'http://0.0.0.0:5000/generate-questions'
     --header 'Content-Type: application/json'
     --data-raw '[
       "content": "xxx",

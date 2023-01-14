@@ -1,8 +1,10 @@
 import json
+import requests
+import threading
 import torch
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import Flask, request, Response, jsonify, make_response
+from flask import Flask, request, Response, jsonify, make_response, redirect
 from face_recognition.face_detection import main as face_detection_main
 from face_recognition.face_detection.common import set_env
 from image_captioning import image_captioning
@@ -14,11 +16,19 @@ from questgen import main
 app = Flask(__name__)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+# Global variables
 QGenerator = main.QGen()
-
 Models = {
     'image_captioning_model': None,
 }
+last_image_captioning_list = []     # save the last image captioning results, length will be determined by call_story_gen_interval
+call_story_gen_interval = 3
+story_generator_is_free = True
+generated_stories = []
+
+
+# Constant
+STORY_GENERATOR_API_HOST = 'http://10.23.11.105:8000'
 
 IMAGE_PROCESS_OK = 100
 IMAGE_PROCESS_ERR = 101
@@ -34,6 +44,8 @@ ERR_MESSAGES = {
     UNKNOWN_ERR: 'Unknown error has occurred.'
 }
 
+
+# API content
 
 @app.route('/face-recognition/config-database', methods=['GET'])
 def config_database():
@@ -213,9 +225,106 @@ def face_recognition():
     # Return candidates
     return make_response(jsonify(candidates), 200)
 
+# Begin Story Generator API
+@app.route('/set-story-gen-api-host', methods=['POST'])
+def set_story_gen_api_host():
+    global STORY_GENERATOR_API_HOST
+
+    params = request.json
+    if 'hostname' not in params:
+        response = {
+            'error': ERR_MESSAGES[INVALID_REQUEST_ERR]
+        }
+        return make_response(jsonify(response), 400)
+
+    STORY_GENERATOR_API_HOST = params['hostname']
+
+    response = {
+        'result': 'success'
+    }
+    return make_response(jsonify(response), 200)
+
+
+@app.route('/set-story-gen-interval', methods=['POST'])
+def set_call_story_generator_interval():
+    global call_story_gen_interval
+
+    params = request.json
+    if 'interval' not in params:
+        response = {
+            'error': ERR_MESSAGES[INVALID_REQUEST_ERR]
+        }
+        return make_response(jsonify(response), 400)
+
+    try:
+        interval = int(params['interval'])
+        call_story_gen_interval = interval
+    except Exception:
+        response = {
+            'error': ERR_MESSAGES[INVALID_REQUEST_ERR]
+        }
+        return make_response(jsonify(response), 400)
+
+    response = {
+        'result': 'success'
+    }
+    return make_response(jsonify(response), 200)
+
+
+@app.route('/init-story-generator', methods=['POST'])
+def init_story_generator():
+    """
+    Initialize the story generator
+    """
+    url = f'{STORY_GENERATOR_API_HOST}/init-story-generator'
+    return redirect(url, code=307)
+
+
+@app.route('/get-generated-story', methods=['GET'])
+def get_generated_story():
+    global generated_stories
+    
+    response = {
+        'results': generated_stories
+    }
+    return make_response(jsonify(response), 200)
+
+
+@app.route('/add-text-to-story', methods=['POST'])
+def add_text_to_story():
+    """
+    Initialize the story generator
+    """
+    url = f'{STORY_GENERATOR_API_HOST}/add-text-to-story'
+    return redirect(url, code=307)
+# End Story Generator API
+
+
+def call_story_generator():
+    global generated_stories, story_generator_is_free
+
+    if len(last_image_captioning_list) == 0:
+        return
+
+    story_generator_is_free = False
+
+    # Call Story-Generator API
+    url = f'{STORY_GENERATOR_API_HOST}/generate-story'
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        'prompt': '. '.join(last_image_captioning_list)
+    }
+    res = requests.post(url, data=json.dumps(data), headers=headers)
+    if res.status_code == 200:
+        generated_stories = res.json()['results']
+
+    story_generator_is_free = True
+
 
 @app.route('/image-captioning', methods=['GET', 'POST'])
 def image_captioning_method():
+    global last_image_captioning_list, story_generator_is_free
+
     if request.method == 'GET':
         return Response('Image Captioning module is available.', status=200)
 
@@ -245,6 +354,13 @@ def image_captioning_method():
     # Process image
     caption = image_captioning.process_image(Models['image_captioning_model'], img_data['image'])
 
+    # Trigger Story Generator
+    last_image_captioning_list.append(caption)
+    if len(last_image_captioning_list) >= call_story_gen_interval and story_generator_is_free:
+        print('call story_generator', len(last_image_captioning_list))
+        th = threading.Thread(target=call_story_generator)
+        th.start()
+
     # Chatterbot
     chatbot_result = chatbot_main.run_chatterbot(caption, candidate_size)
 
@@ -254,6 +370,7 @@ def image_captioning_method():
         'text': chatbot_result['text'],
         'questions': [{'id': quiz.id, 'question': quiz.text, 'options': json.loads(quiz.options)} for quiz in chatbot_result['candidates']]
     }
+    
     return make_response(jsonify(response), 200)
 
 
