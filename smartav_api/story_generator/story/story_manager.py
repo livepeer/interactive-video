@@ -62,8 +62,10 @@ class Story:
         self.init_from_dict(story_dict)
 
     def add_to_story(self, action, story_block):
-        self.actions.append(action)
-        if story_block is not None:
+        if action:
+            self.actions.append(action)
+
+        if story_block:
             self.results.append(story_block)
 
     def latest_result(self):
@@ -76,7 +78,8 @@ class Story:
         while mem_ind > 0:
 
             if len(self.results) >= mem_ind:
-                latest_result += self.actions[-mem_ind] + self.results[-mem_ind]
+                # latest_result += self.actions[-mem_ind] + self.results[-mem_ind]
+                latest_result += self.results[-mem_ind]
 
             mem_ind -= 1
 
@@ -85,7 +88,7 @@ class Story:
     def __str__(self):
         story_list = [self.story_start]
         for i in range(len(self.results)):
-            story_list.append("\n" + self.actions[i] + "\n")
+            # story_list.append("\n" + self.actions[i] + "\n")
             story_list.append("\n" + self.results[i])
 
         return "".join(story_list)
@@ -235,7 +238,7 @@ class UnconstrainedStoryManager(StoryManager):
         return block_list
 
     def add_text(self, text):
-        self.story.add_to_story(text, None)
+        self.story.add_to_story(None, text)
         return True
 
 

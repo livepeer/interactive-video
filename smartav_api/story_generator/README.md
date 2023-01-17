@@ -26,16 +26,17 @@ This project is based on AIDungeon [here](https://github.com/Latitude-Archives/A
     ```
 4. Clone the project and install the required dependencies
     ```
-    git clone https://github.com/JamesWanglf/AI_Dungeon.git
-    cd AI_Dungeon/
+    git clone https://github.com/livepeer/interactive-video.git
+    cd interactive-video/smartav_api/story_generator/
     pip install -r requirements.txt
     pip install werkzeug==2.2.2
     ```
 5. Download model
     ```
-    cd AI_Dungeon/
+    cd interactive-video/smartav_api/story_generator/
     sudo su
     ./download_model.sh
+    exit
     ```
 6. Now, you can run the project.
     ```

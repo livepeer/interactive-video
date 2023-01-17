@@ -98,7 +98,7 @@ def generate_story():
 
 
 @app.route('/add-text-to-story', methods=['POST'])
-def determine_story_text():
+def add_text_to_story():
     """
     Generate Story
     Request should contain the prompt
