@@ -223,7 +223,7 @@ sample request:
 curl --location --request POST 'http://0.0.0.0:5000/init-story-generator'
 --header 'Content-Type: application/json'
 --data-raw '{
-    "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...."
+    "prompt": "Your initial text here"
 }
 ```
 

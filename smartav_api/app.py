@@ -4,7 +4,8 @@ import threading
 import torch
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import Flask, request, Response, jsonify, make_response, redirect
+from flask import Flask, request, Response, jsonify, make_response, redirect, render_template
+
 from face_recognition.face_detection import main as face_detection_main
 from face_recognition.face_detection.common import set_env
 from image_captioning import image_captioning
@@ -46,6 +47,12 @@ ERR_MESSAGES = {
 
 
 # API content
+
+@app.route('/api/docs')
+def get_docs():
+    print('sending docs')
+    return render_template('swaggerui.html')
+
 
 @app.route('/face-recognition/config-database', methods=['GET'])
 def config_database():
@@ -126,19 +133,22 @@ def clear_samples():
 
         if not res:
             response = {
-                'error': 'Failed to clear the existing samples'
+                'success': False,
+                'msg': 'Failed to clear the existing samples'
             }
             return make_response(jsonify(response), 500)
 
         response = {
-            'success': 'Samples have been removed successfully'
+            'success': True,
+            'msg': 'Samples have been removed successfully'
         }
         
         return make_response(jsonify(response), 200)
     
     except Exception as e:
         response = {
-            'fail': str(e)
+            'success': False,
+            'error': str(e)
         }
         return make_response(jsonify(response), 500)
 
