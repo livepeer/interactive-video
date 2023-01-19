@@ -92,14 +92,14 @@ Move to flask_server directory.
 ### Face Recognition
 * /face-recognition/config-database  
     ```
-    curl --location --request GET 'http://0.0.0.0:5000/face-recognition/config-database' 
-    --header 'Content-Type: application/json' 
-    --data-raw '{
-        "host": <host domain/ip>,
-        "port": <db port>,
-        "db_name": <db name>,
-        "username": <username>,
-        "password": <password>
+    curl --location --request GET 'http://0.0.0.0:5000/face-recognition/config-database' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{ \
+        "host": <host domain/ip>, \
+        "port": <db port>, \
+        "db_name": <db name>, \
+        "username": <username>, \
+        "password": <password> \
     }'
     ```
 * /face-recognition/clear-samples  
@@ -108,40 +108,38 @@ Move to flask_server directory.
     ```
 * /face-recognition/update-samples  
     ```
-    curl --location --request POST 'http://0.0.0.0:5000/face-recognition/update-samples'
-    --header 'Content-Type: application/json'
-    --data-raw '[
-    {
-        "id": "person1",
-        "name: "person1",
-        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....",
-        "metadata": "mydomain.com/myobject1",
-        "action": "embedlink"
-    },
-    {
-        "id": "person2",
-        "name: "person2",
-        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....",
-        "metadata": "mydomain.com/myobject2",
-        "action": "embedlink"
-    }
-    ]'
+    curl --location --request POST 'http://0.0.0.0:5000/face-recognition/update-samples' \
+    --header 'Content-Type: application/json' \
+    --data-raw '[ \
+    { \
+        "id": "person1", \
+        "name: "person1", \
+        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....", \
+        "metadata": "mydomain.com/myobject1", \
+        "action": "embedlink" \
+    }, \
+    { \
+        "id": "person2", \
+        "name: "person2", \
+        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....", \
+        "metadata": "mydomain.com/myobject2", \
+        "action": "embedlink" \
+    }]'
     ```
     When you send an image for existing "id", the image will be appended to the "id" face.  
     In this way, each face can have multiple feature vectors, and all vectors will be used when we recognize the face.  
     This will increase the accuracy of our recognition module.  
     For example, after you send the above request, send the following request.
     ```
-    curl --location --request POST 'http://0.0.0.0:5000/face-recognition/update-samples'
-    --header 'Content-Type: application/json'
-    --data-raw '[
-    {
-        "id": "person1",
-        "image": "data:image/jpeg;base64,/8a/AgWAGojgegWEGgojEGOIJ....",
-        "name: "",
-        "metadata": "",
-        "action": ""
-    },
+    curl --location --request POST 'http://0.0.0.0:5000/face-recognition/update-samples' \
+    --header 'Content-Type: application/json' \
+    --data-raw '[{ \
+        "id": "person1", \
+        "image": "data:image/jpeg;base64,/8a/AgWAGojgegWEGgojEGOIJ....", \
+        "name: "", \
+        "metadata": "", \
+        "action": "" \
+    }]'
     ```
     As a result, "person1" will have 2 feature vectors totally. 
     
@@ -149,18 +147,18 @@ Move to flask_server directory.
    ```
    curl --location --request POST 'http://0.0.0.0:5000/face-recognition/update-metadata/unknown_person_1' \
    --header 'Content-Type: application/json' \
-   --data-raw '{
-      "name": <name>,
-      "metadata": <metadata>
+   --data-raw '{ \
+      "name": <name>, \
+      "metadata": <metadata> \
    }'
    ```
 * /face-recognition  
     ```
-    curl --location --request POST 'http://0.0.0.0:5000/face-recognition'
-    --header 'Content-Type: application/json'
-    --data-raw '{
-        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....",
-        "min_distance": 0.35
+    curl --location --request POST 'http://0.0.0.0:5000/face-recognition' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{ \
+        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....", \
+        "min_distance": 0.35 \
      }'
     ```
     "min_distance" is an optional field. The value of this field is related with the feature extraction model. For example, it will be in [0, 1]. Since we are using "facenet" model as default, the ideal threshold is 0.35.
@@ -169,10 +167,10 @@ Move to flask_server directory.
 ### Image Captioning
 * /image-captioning  
     ```
-    curl --location --request POST 'http://0.0.0.0:5000/image-captioning'
-    --header 'Content-Type: application/json'
-    --data-raw '{
-      "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....",
+    curl --location --request POST 'http://0.0.0.0:5000/image-captioning' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{ \
+      "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....", \
     }
     ```
 
@@ -190,10 +188,10 @@ You should set the host url of the story generator node.
 sample request:
 
 ```
-curl --location --request POST 'http://0.0.0.0:5000/set-story-gen-api-host'
---header 'Content-Type: application/json'
---data-raw '{
-    "hostname": "http://localhost:8000"
+curl --location --request POST 'http://0.0.0.0:5000/set-story-gen-api-host' \
+--header 'Content-Type: application/json' \
+--data-raw '{ \
+    "hostname": "http://localhost:8000" \
 }
 ```
 
@@ -220,10 +218,10 @@ You should initialize the story generator before you call the other endpoints re
 
 sample request:
 ```
-curl --location --request POST 'http://0.0.0.0:5000/init-story-generator'
---header 'Content-Type: application/json'
---data-raw '{
-    "prompt": "Your initial text here"
+curl --location --request POST 'http://0.0.0.0:5000/init-story-generator' \
+--header 'Content-Type: application/json' \
+--data-raw '{ \
+    "prompt": "Your initial text" \
 }
 ```
 
@@ -248,10 +246,10 @@ response content:
 #### <a name="set-story-gen-interval"/> /set-story-gen-interval  
 sample request:
 ```
-curl --location --request POST 'http://0.0.0.0:5000/set-story-gen-interval'
---header 'Content-Type: application/json'
---data-raw '{
-    "interval": 3
+curl --location --request POST 'http://0.0.0.0:5000/set-story-gen-interval' \
+--header 'Content-Type: application/json' \
+--data-raw '{ \
+    "interval": 3 \
 }
 ```
 This means that it will generate the story every time when the `/image-captioning` endpoint has been called 3 times.
@@ -291,11 +289,11 @@ You can select one from the candidates and add it to the story.
 
 sample request:
 ```
-curl --location --request POST 'http://{hostname}/add-text-to-story'
---header 'Content-Type: application/json'
---data-raw 
-'{
-    "text": "Your text is here."
+curl --location --request POST 'http://{hostname}/add-text-to-story' \
+--header 'Content-Type: application/json' \
+--data-raw \
+'{ \
+    "text": "Your text is here." \
 }'
 ```
 
@@ -328,11 +326,11 @@ status_code: 500
 ### Generating Questions
 * /generate-questions  
     ```
-    curl --location --request POST 'http://0.0.0.0:5000/generate-questions'
-    --header 'Content-Type: application/json'
-    --data-raw '[
-      "content": "xxx",
-      "max_questions": 3
+    curl --location --request POST 'http://0.0.0.0:5000/generate-questions' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{ \
+      "content": "xxx", \
+      "max_questions": 3 \
     }
     ```
     "max_questions" is the optional field. 4 as default.  
@@ -368,25 +366,25 @@ status_code: 500
 ### Instance Segmentation
 * /instance-segmentation/load-model  
     ```
-    curl --location --request POST 'http://0.0.0.0:5000/instance-segmentation/load-model'
-    --header 'Content-Type: application/json'
-    --data-raw '{
-        "weights": "instance_segmentation/yolov7-seg.pt",
-        "device": 0,
-        "dataset": "instance_segmentation/data/coco.yml",
-        "half": true,
-        "dnn": true
-     }'
+    curl --location --request POST 'http://0.0.0.0:5000/instance-segmentation/load-model' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{ \
+        "weights": "instance_segmentation/yolov7-seg.pt", \
+        "device": 0, \
+        "dataset": "instance_segmentation/data/coco.yml", \
+        "half": true, \
+        "dnn": true \
+    }'
     ```  
     All fields in payload are optional.
 * /instance-segmentation/detect-objects  
     ```
-    curl --location --request POST 'http://0.0.0.0:5000/instance-segmentation/detect-objects'
-    --header 'Content-Type: application/json'
-    --data-raw '{
-        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....",
-        "top_k": <max number of detected objects>,
-        "score_threshold": 0.5
-     }'
+    curl --location --request POST 'http://0.0.0.0:5000/instance-segmentation/detect-objects' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{ \
+        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD....", \
+        "top_k": <max number of detected objects>, \
+        "score_threshold": 0.5 \
+    }'
     ```
     "score_threshold" should be a value between 0 and 1.

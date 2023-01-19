@@ -126,7 +126,3 @@ def add_text_to_story():
         return make_response(jsonify({'result': 'success'}), 200)
 
     return make_response(jsonify({'result': 'failure'}), 500)
-
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)

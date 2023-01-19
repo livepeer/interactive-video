@@ -30,6 +30,7 @@ This project is based on AIDungeon [here](https://github.com/Latitude-Archives/A
     cd interactive-video/smartav_api/story_generator/
     pip install -r requirements.txt
     pip install werkzeug==2.2.2
+    pip install protobuf==3.20.0
     ```
 5. Download model
     ```
@@ -40,7 +41,7 @@ This project is based on AIDungeon [here](https://github.com/Latitude-Archives/A
     ```
 6. Now, you can run the project.
     ```
-    python app.py
+    gunicorn -w 1 -b 0.0.0.0:8000 --timeout 300 wsgi:app
     ```
     This command will run the API on port 8000.
 
@@ -56,11 +57,11 @@ This project is based on AIDungeon [here](https://github.com/Latitude-Archives/A
 
     sample request: 
     ```
-    curl --location --request POST 'http://{hostname}/init-story-generator'
-    --header 'Content-Type: application/json'
-    --data-raw 
-    '{
-        "prompt": "Your initializing text is here."
+    curl --location --request POST 'http://{hostname}/init-story-generator' \
+    --header 'Content-Type: application/json' \
+    --data-raw \
+    '{ \
+        "prompt": "Your initializing text is here." \
     }'
     ```
 
@@ -92,11 +93,11 @@ This project is based on AIDungeon [here](https://github.com/Latitude-Archives/A
 
     sample request:
     ```
-    curl --location --request POST 'http://{hostname}/generate-story'
-    --header 'Content-Type: application/json'
-    --data-raw 
-    '{
-        "prompt": "Your prompt is here."
+    curl --location --request POST 'http://{hostname}/generate-story' \
+    --header 'Content-Type: application/json' \
+    --data-raw \
+    '{ \
+        "prompt": "Your prompt is here." \
     }'
     ```
 
@@ -130,11 +131,11 @@ This project is based on AIDungeon [here](https://github.com/Latitude-Archives/A
 
     sample request:
     ```
-    curl --location --request POST 'http://{hostname}/add-text-to-story'
-    --header 'Content-Type: application/json'
-    --data-raw 
-    '{
-        "text": "Your text is here."
+    curl --location --request POST 'http://{hostname}/add-text-to-story' \
+    --header 'Content-Type: application/json' \
+    --data-raw \
+    '{ \
+        "text": "Your text is here." \
     }'
     ```
 

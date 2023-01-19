@@ -311,9 +311,10 @@ def add_text_to_story():
 
 
 def call_story_generator():
-    global generated_stories, story_generator_is_free
+    global generated_stories, story_generator_is_free, last_image_captioning_list
 
-    if len(last_image_captioning_list) == 0:
+    image_captioning_results_queue = last_image_captioning_list.copy()
+    if len(image_captioning_results_queue) == 0:
         return
 
     story_generator_is_free = False
@@ -322,7 +323,7 @@ def call_story_generator():
     url = f'{STORY_GENERATOR_API_HOST}/generate-story'
     headers = {'Content-Type': 'application/json'}
     data = {
-        'prompt': '. '.join(last_image_captioning_list)
+        'prompt': '. '.join(image_captioning_results_queue)
     }
     res = requests.post(url, data=json.dumps(data), headers=headers)
     if res.status_code == 200:
@@ -370,6 +371,9 @@ def image_captioning_method():
         print('call story_generator', len(last_image_captioning_list))
         th = threading.Thread(target=call_story_generator)
         th.start()
+
+        # AFter trigger the Story Generator, need to clear this list
+        last_image_captioning_list = []
 
     # Chatterbot
     chatbot_result = chatbot_main.run_chatterbot(caption, candidate_size)
