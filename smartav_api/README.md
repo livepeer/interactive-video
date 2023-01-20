@@ -87,6 +87,10 @@ This app is responsible for configuration of database, the face detection, save 
 Move to flask_server directory.    
 ```gunicorn -w <number of processes> -b 0.0.0.0:5000 wsgi:app```
 
+### 4. Swagger Documentation for API endpoints
+After you run the `Main Server` successfully, you can find the API endpoints from Swagger Documentation.  
+Access `http://0.0.0.0:5000/api/docs` to see the documentation.
+
 
 ## Endpoints
 ### Face Recognition

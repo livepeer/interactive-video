@@ -54,12 +54,12 @@ def get_docs():
     return render_template('swaggerui.html')
 
 
-@app.route('/face-recognition/config-database', methods=['GET'])
+@app.route('/face-recognition/config-database', methods=['POST'])
 def config_database():
     """
     Set the database connection
     """
-    data = request.get_json()
+    data = request.json
 
     if 'host' not in data:
         return Response('"host" is missing.', status=400)
@@ -101,12 +101,8 @@ def config_database():
     return Response('Database configuration is done.', status=200)
 
 
-@app.route('/face-recognition/update-samples', methods=['GET', 'POST'])
+@app.route('/face-recognition/update-samples', methods=['POST'])
 def update_samples():
-    # GET request
-    if request.method == 'GET':
-        return Response('Face detection server is running.', status=200)
-
     # POST request
     data_list = request.json
 
@@ -126,7 +122,7 @@ def update_samples():
     return make_response(jsonify(response), 200)
 
 
-@app.route('/face-recognition/clear-samples', methods=['GET', 'POST'])
+@app.route('/face-recognition/clear-samples', methods=['POST'])
 def clear_samples():
     try:
         res = face_detection_main.clear_sample_database()
@@ -202,11 +198,8 @@ def update_sample_metadata(sample_id):
     return make_response(jsonify(response), 200)
 
 
-@app.route('/face-recognition', methods=['GET', 'POST'])
+@app.route('/face-recognition', methods=['POST'])
 def face_recognition():
-    if request.method == 'GET':
-        return Response('Face detection server is running.', status=200)
-
     # POST
     # Read image data
     img_data = request.json
@@ -332,12 +325,9 @@ def call_story_generator():
     story_generator_is_free = True
 
 
-@app.route('/image-captioning', methods=['GET', 'POST'])
+@app.route('/image-captioning', methods=['POST'])
 def image_captioning_method():
     global last_image_captioning_list, story_generator_is_free
-
-    if request.method == 'GET':
-        return Response('Image Captioning module is available.', status=200)
 
     # POST
     # Read image data

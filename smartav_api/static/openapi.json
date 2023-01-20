@@ -23,7 +23,7 @@
     ],
     "paths": {
       "/face-recognition/config-database": {
-        "get": {
+        "post": {
           "tags": [
             "Face Recognition"
           ],
@@ -106,8 +106,8 @@
           }
         }
       },
-      "/face-recognition/clear-sample": {
-        "get": {
+      "/face-recognition/clear-samples": {
+        "post": {
           "tags": [
             "Face Recognition"
           ],
