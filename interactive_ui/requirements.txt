@@ -1,0 +1,6 @@
+django==2.2.24
+djangrestframework==3.13.1
+python-dotenv==1.0.0
+SQLALchemy==2.0.5
+psycopg2==2.9.5
+requests
