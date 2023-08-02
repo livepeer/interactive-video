@@ -1,6 +1,6 @@
 # Interactive-video
 
-Interactive video provides interactive video experience both to stream viewers and broadcasters by leveraging AI in video/audio understanding. By leveraging the power of community of GPU nodes, it aims to provide configurable, selectable AI features.
+Interactive video provides interactive video experience both to stream viewers and broadcasters by leveraging AI in video/audio understanding. By leveraging the power of community of GPU nodes, it aims to provide configurable, selectable AI features. This project will continue on [museme.com](https://museme.com).
 
 ## System architecture
 ![](img/smart%20av%20architecture.png)
